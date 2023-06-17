@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\LogoutUserController;
+use App\Http\Controllers\SaleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 // auth user
@@ -19,3 +21,6 @@ Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum
 Route::post('/users', [UserController::class, 'store'])->middleware('auth:sanctum');
 Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('auth:sanctum');
 Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('auth:sanctum');
+Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('auth:sanctum');
+// create sale api 
+Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');

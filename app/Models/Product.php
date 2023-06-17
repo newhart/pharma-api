@@ -21,7 +21,8 @@ class Product extends Model
         'numberGellule',
         'datePeremption',
         'reference',
-        'libele'
+        'libele',
+        'type'
     ];
 
     public function  orders(): BelongsToMany
