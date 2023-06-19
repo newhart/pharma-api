@@ -12,9 +12,13 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $products = Product::latest()->paginate(20);
+        $query = Product::query();
+        if ($request->get('search')) {
+            $query = $query->where('name', 'LIKE', "%{$request->get('search')}%");
+        }
+        $products = $query->latest()->paginate(20);
         $products->map(function ($product) {
             $product->reference = 'PRDT-' .  $product->id;
         });
