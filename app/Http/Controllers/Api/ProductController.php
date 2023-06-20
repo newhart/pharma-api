@@ -18,6 +18,7 @@ class ProductController extends Controller
         if ($request->get('search')) {
             $query = $query->where('name', 'LIKE', "%{$request->get('search')}%");
         }
+
         $products = $query->latest()->paginate(20);
         $products->map(function ($product) {
             $product->reference = 'PRDT-' .  $product->id;
