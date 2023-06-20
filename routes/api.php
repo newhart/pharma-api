@@ -24,3 +24,4 @@ Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('au
 Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('auth:sanctum');
 // create sale api 
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
+Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');

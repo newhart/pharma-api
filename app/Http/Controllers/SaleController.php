@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SaleRequest;
 use App\Models\Product;
 use App\Models\Sale;
-use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
@@ -27,6 +26,7 @@ class SaleController extends Controller
                         'estACredit' => 'test',
                         'saleAmout' => $data['montant'],
                         'salePayed' => $data['montant'],
+                        'stateSale' => 'En cours',
                         'saleStay' => 0.00
                     ]);
 
@@ -53,11 +53,42 @@ class SaleController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function additionalQuantityProduct(array  $data, Product $product): void
+    public function index(Request $request): JsonResponse
     {
-        if ($data['quantityBoite'] !== "" && $product->quantityBoite) $product->quantityBoite -= (int) $data['quantityBoite'];
-        if ($data['quantityGellule'] !== "" && $product->quantityGellule) $product->quantityGellule -= (int) $data['quantityGellule'];
-        if ($data['quantityPlaquette'] !== "" && $product->quantityPlaquette) $product->quantityPlaquette -= (int) $data['quantityPlaquette'];
+        $query = Sale::query();
+        if ($request->get('search')) {
+            $query = $query->where('date', $request->get('search'));
+        }
+        $sales = $query->latest('saleDate')->paginate(10);
+        $sales->map(function ($sale) {
+            $sale->reference = 'PRDT-' . $sale->id;
+        });
+        return response()->json($sales);
+    }
+
+    private function additionalQuantityProduct(array  $data, Product $product)
+    {
+        // traitement if the sale  type is boite
+        if ($data['quantityBoite'] != "" && $product->quantityBoite) {
+            $product->quantityBoite = (int) $product->quantityBoite -   (int) $data['quantityBoite'];
+            $quantityPlaqutteForBoite = (int) $data['quantityBoite'] * (int) $product->numberPlaquette;
+            $product->quantityPlaquette = (int) $product->quantityPlaquette - (int) $quantityPlaqutteForBoite;
+            $quantityGelluleForPlaquette = (int) $product->numberGellule * $quantityPlaqutteForBoite;
+            $product->quantityGellule = (int) $product->quantityGellule -  $quantityGelluleForPlaquette;
+        }
+        if ($data['quantityPlaquette'] != "" && $product->quantityPlaquette) {
+            $countRestPlaquetQuantity  = (int) ($product->quantityPlaquette -  (int) $data['quantityPlaquette']);
+            $product->quantityPlaquette = $countRestPlaquetQuantity;
+            $product->quantityBoite =  ($countRestPlaquetQuantity / $product->numberPlaquette);
+            $product->quantityGellule = ($product->numberGellule * $countRestPlaquetQuantity);
+        }
+        if ($data['quantityGellule'] != "" && $product->quantityGellule) {
+            $countRestQuantityGellule = (int) $product->quantityGellule -  (int) $data['quantityGellule'];
+            $product->quantityGellule = $countRestQuantityGellule;
+            $product->quantityPlaquette = $countRestQuantityGellule / $product->numberGellule;
+            $product->quantityBoite = $product->quantityPlaquette / $product->numberPlaquette;
+        }
+
         // update the product in the stock
         $product->save();
     }
