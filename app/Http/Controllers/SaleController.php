@@ -66,7 +66,7 @@ class SaleController extends Controller
         return response()->json($sales);
     }
 
-    private function additionalQuantityProduct(array  $data, Product $product)
+    private function additionalQuantityProduct(array  $data, Product $product): void
     {
         // traitement if the sale  type is boite
         if ($data['quantityBoite'] != "" && $product->quantityBoite) {
