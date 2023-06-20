@@ -19,6 +19,10 @@ class SaleController extends Controller
             if ($product) {
                 try {
                     $this->additionalQuantityProduct($data, $product);
+                    if ($data['remise']) {
+                        $amountRemise = $data['montant'] *  ((int) $data['remise'] / 100);
+                        $data['montant'] -= $amountRemise;
+                    }
                     $sale = Sale::create([
                         'saleDate' => now(),
                         'playmentDatePrevueAt' => now(),
