@@ -57,7 +57,9 @@ class SaleController extends Controller
     {
         $query = Sale::query();
         if ($request->get('search')) {
-            $query = $query->where('date', $request->get('search'));
+            $query = $query
+                ->where('date', 'LIKE',  "%{$request->get('search')}%")
+                ->orWhere('clientName', 'LIKE', "%{$request->get('search')}%");
         }
         $sales = $query->latest('saleDate')->paginate(10);
         $sales->map(function ($sale) {
