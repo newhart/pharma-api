@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Order extends Model
 {
     use HasFactory;
-    public  $timestamps = false ;
+    public  $timestamps = false;
     protected  $fillable = ['dateCommande'];
 
-    public function products() : BelongsToMany
+    public function products(): BelongsToMany
     {
-        return  $this->belongsToMany(Product::class);
+        return  $this->belongsToMany(Product::class)->withPivot(['quantityForOrder', 'fournisseurPrice', 'montantOrder']);
     }
 }

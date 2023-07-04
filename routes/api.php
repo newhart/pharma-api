@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\LogoutUserController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SaleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -25,3 +26,8 @@ Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('a
 // create sale api 
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');
+// order api
+Route::post('/order/{id}', [OrderController::class, 'store']);
+Route::get('/orders', [OrderController::class, 'index']);
+Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel']);
+Route::post('/order/validation/store', [OrderController::class, 'validation']);
