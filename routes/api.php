@@ -23,10 +23,10 @@ Route::post('/users', [UserController::class, 'store'])->middleware('auth:sanctu
 Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('auth:sanctum');
 Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('auth:sanctum');
 Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('auth:sanctum');
-// create sale api 
+// create sale api ressource
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');
-// order api
+// order api ressource
 Route::post('/order/{id}', [OrderController::class, 'store']);
 Route::get('/orders', [OrderController::class, 'index']);
 Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel']);
