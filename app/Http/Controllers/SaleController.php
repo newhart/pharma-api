@@ -42,9 +42,9 @@ class SaleController extends Controller
                         'quantityBoite' => $data['quantityBoite'] ?? 0,
                         'quantityGellule' => $data['quantityGellule'] ?? 0,
                         'quantityPlaquette' => $data['quantityPlaquette'] ?? 0,
-                        'priceSaleBoite' => $data['priceBoite'],
-                        'priceSaleGellule' => $data['priceGellule'],
-                        'priceSalePlaquette' => $data['pricePlaquette'],
+                        'priceSaleBoite' => $this->changePriceValidation($data['priceBoite']),
+                        'priceSaleGellule' => $this->changePriceValidation($data['priceGellule']),
+                        'priceSalePlaquette' => $this->changePriceValidation($data['pricePlaquette']),
                     ]);
 
                     return response()->json(['success' => true]);
@@ -55,6 +55,11 @@ class SaleController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function changePriceValidation($value)
+    {
+        return (int) preg_replace('/Ar|,/', '', $value);
     }
 
     public function index(Request $request): JsonResponse

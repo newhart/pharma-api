@@ -22,8 +22,22 @@ class ProductController extends Controller
         $products = $query->latest()->paginate(20);
         $products->map(function ($product) {
             $product->reference = 'PRDT-' .  $product->id;
+            if ($product->priceBoite) {
+                $product->priceBoite =  $this->formatPrice($product->priceBoite);
+            }
+            if ($product->pricePlaquette) {
+                $product->pricePlaquette =  $this->formatPrice($product->pricePlaquette);
+            }
+            if ($product->priceGellule) {
+                $product->priceGellule =  $this->formatPrice($product->priceGellule);
+            }
         });
         return response()->json($products);
+    }
+
+    private  function formatPrice($value)
+    {
+        return strrev(wordwrap(strrev($value), 3, ',', true)) . 'Ar';
     }
 
     /**
