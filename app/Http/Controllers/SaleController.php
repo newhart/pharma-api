@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SaleRequest;
 use App\Models\Product;
 use App\Models\Sale;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class SaleController extends Controller
                         'saleAmout' => $data['montant'],
                         'salePayed' => $data['montant'],
                         'stateSale' => 'En cours',
+                        'user_id' => $request->user()->id,
                         'saleStay' => 0.00
                     ]);
 
@@ -55,6 +57,18 @@ class SaleController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    public function lastWeekSales()
+    {
+        $startDate = Carbon::now()->subWeek()->startOfWeek();
+        $endDate = Carbon::now()->subWeek()->endOfWeek();
+        $sales = Sale::where('stateSale', 'validate')
+            ->whereBetween('updated_at', [$startDate, $endDate])
+            ->limit(7)
+            ->latest()
+            ->get();
+        return response()->json($sales);
     }
 
     private function changePriceValidation($value)

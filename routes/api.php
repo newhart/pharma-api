@@ -26,6 +26,7 @@ Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('a
 // create sale api ressource
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');
+Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
 // order api ressource
 Route::post('/order/{id}', [OrderController::class, 'store']);
 Route::get('/orders', [OrderController::class, 'index']);
