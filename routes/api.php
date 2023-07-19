@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::resource('product', ProductController::class)->middleware('auth:sanctum');
 // get all users
 Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');
+Route::get('/users/item', [UserController::class, 'item'])->middleware('auth:sanctum');
 Route::post('/users', [UserController::class, 'store'])->middleware('auth:sanctum');
 Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('auth:sanctum');
 Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('auth:sanctum');
