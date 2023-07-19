@@ -79,12 +79,23 @@ class SaleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Sale::query();
-        if ($request->get('search')) {
-            $query = $query
-                ->where('date', 'LIKE',  "%{$request->get('search')}%")
-                ->orWhere('clientName', 'LIKE', "%{$request->get('search')}%");
+        // filter with the user
+        if ($request->get('user') && $request->get('user') !== "null") {
+            $user = $request->get('user');
+            $user = json_decode($user);
+            $query = $query->whereHas('user', function ($query) use ($user) {
+                $query->where('id', $user->id);
+            });
         }
-        $sales = $query->latest('saleDate')->paginate(10);
+        // filter with the status
+        if ($request->get('status')) {
+            $query = $query->where('stateSale', $request->get('status'));
+        }
+        // filter with date
+        if ($request->get('date')) {
+            $query = $query->where('saleDate', $request->get('date'));
+        }
+        $sales = $query->latest()->paginate(10);
         $sales->map(function ($sale) {
             $sale->reference = 'PRDT-' . $sale->id;
         });
