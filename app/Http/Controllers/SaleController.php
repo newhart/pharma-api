@@ -67,14 +67,51 @@ class SaleController extends Controller
 
     public function lastWeekSales()
     {
+        // Get the start and end dates of the current week
         $startDate = Carbon::now()->subWeek()->startOfWeek();
         $endDate = Carbon::now()->subWeek()->endOfWeek();
-        $sales = Sale::where('stateSale', 'validate')
-            ->whereBetween('updated_at', [$startDate, $endDate])
-            ->limit(7)
-            ->latest()
+
+        // Retrieve sales data for this week
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, SUM(saleAmout) as ca')
+            ->orderBy('date', 'desc')
+            ->groupBy('date')
             ->get();
-        return response()->json($sales);
+
+        // Create an associative array to store the results
+        $salesArray = [];
+
+        // Iterate through the sales data and put the results in the array
+        foreach ($sales as $key =>  $sale) {
+            $salesArray[$key + 1] = $sale->ca;
+        }
+
+        // Return the sales data as a JSON response
+        return response()->json($salesArray);
+    }
+
+    public function salesForOneYear()
+    {
+        // Get the start and end dates of the current year
+        $startDate = Carbon::now()->startOfYear();
+        $endDate = Carbon::now()->endOfYear();
+
+        // Retrieve sales data for one year
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('MONTH(created_at) as month, SUM(saleAmout) as ca')
+            ->groupBy('month')
+            ->get();
+
+        // Create an associative array to store the results
+        $salesArray = [];
+
+        // Iterate through the sales data and put the results in the array
+        foreach ($sales as $key =>  $sale) {
+            $salesArray[$key + 1] = $sale->ca;
+        }
+
+        // Return the sales data as a JSON response
+        return response()->json($salesArray);
     }
 
     public function index(Request $request): JsonResponse
@@ -141,8 +178,8 @@ class SaleController extends Controller
 
     public function checkValidation(Request $request, Sale $sale): JsonResponse
     {
-        $sale->saleStay = $sale->saleStay - (float) $request->stay ;
-        if($sale->saleStay === 0.0){
+        $sale->saleStay = $sale->saleStay - (float) $request->stay;
+        if ($sale->saleStay === 0.0) {
             $sale->stateSale = 'Valider';
         }
         $sale->save();

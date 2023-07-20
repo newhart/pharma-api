@@ -29,6 +29,7 @@ Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum
 Route::post('/sales/checked-validation/{sale}', [SaleController::class, 'checkValidation'])->middleware('auth:sanctum');
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');
 Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
+Route::get('/sales/for-one-year', [SaleController::class, 'salesForOneYear'])->middleware('auth:sanctum');
 // order api ressource
 Route::post('/order/{id}', [OrderController::class, 'store']);
 Route::get('/orders', [OrderController::class, 'index']);
