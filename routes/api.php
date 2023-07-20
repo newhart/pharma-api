@@ -15,7 +15,7 @@ Route::post('/logout', [LogoutUserController::class, 'logout'])->middleware('aut
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-// route product resource 
+// route product resource
 Route::resource('product', ProductController::class)->middleware('auth:sanctum');
 // get all users
 Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');
@@ -26,6 +26,7 @@ Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('au
 Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('auth:sanctum');
 // create sale api ressource
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
+Route::post('/sales/checked-validation/{sale}', [SaleController::class, 'checkValidation'])->middleware('auth:sanctum');
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');
 Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
 // order api ressource

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Services\PriceService;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,22 +24,18 @@ class ProductController extends Controller
         $products->map(function ($product) {
             $product->reference = 'PRDT-' .  $product->id;
             if ($product->priceBoite) {
-                $product->priceBoite =  $this->formatPrice($product->priceBoite);
+                $product->priceBoite =  PriceService::formatPrice($product->priceBoite);
             }
             if ($product->pricePlaquette) {
-                $product->pricePlaquette =  $this->formatPrice($product->pricePlaquette);
+                $product->pricePlaquette =  PriceService::formatPrice($product->pricePlaquette);
             }
             if ($product->priceGellule) {
-                $product->priceGellule =  $this->formatPrice($product->priceGellule);
+                $product->priceGellule =  PriceService::formatPrice($product->priceGellule);
             }
         });
         return response()->json($products);
     }
 
-    private  function formatPrice($value)
-    {
-        return strrev(wordwrap(strrev($value), 3, ',', true)) . 'Ar';
-    }
 
     /**
      * Store a newly created resource in storage.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaleRequest;
+use App\Http\Services\PriceService;
 use App\Models\Product;
 use App\Models\Sale;
 use Carbon\Carbon;
@@ -35,6 +36,11 @@ class SaleController extends Controller
                         'user_id' => $request->user()->id,
                         'saleStay' => 0.00
                     ]);
+                    // update if the sale is completed
+                    if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
+                        $sale->stateSale = 'Valider';
+                        $sale->save();
+                    }
 
                     DB::table('product_sale')->insert([
                         'product_id' => $product->id,
@@ -44,9 +50,9 @@ class SaleController extends Controller
                         'quantityBoite' => $data['quantityBoite'] ?? 0,
                         'quantityGellule' => $data['quantityGellule'] ?? 0,
                         'quantityPlaquette' => $data['quantityPlaquette'] ?? 0,
-                        'priceSaleBoite' => $this->changePriceValidation($data['priceBoite']),
-                        'priceSaleGellule' => $this->changePriceValidation($data['priceGellule']),
-                        'priceSalePlaquette' => $this->changePriceValidation($data['pricePlaquette']),
+                        'priceSaleBoite' => PriceService::changePriceValidation($data['priceBoite']),
+                        'priceSaleGellule' => PriceService::changePriceValidation($data['priceGellule']),
+                        'priceSalePlaquette' => PriceService::changePriceValidation($data['pricePlaquette']),
                     ]);
 
                     return response()->json(['success' => true]);
@@ -71,11 +77,6 @@ class SaleController extends Controller
         return response()->json($sales);
     }
 
-    private function changePriceValidation($value)
-    {
-        return (int) preg_replace('/Ar|,/', '', $value);
-    }
-
     public function index(Request $request): JsonResponse
     {
         $query = Sale::query();
@@ -98,6 +99,15 @@ class SaleController extends Controller
         $sales = $query->latest()->paginate(10);
         $sales->map(function ($sale) {
             $sale->reference = 'PRDT-' . $sale->id;
+            if ($sale->saleAmout) {
+                $sale->saleAmout =  PriceService::formatPrice($sale->saleAmout);
+            }
+            if ($sale->salePayed) {
+                $sale->salePayed =  PriceService::formatPrice($sale->salePayed);
+            }
+            if ($sale->saleStay) {
+                $sale->saleStay =  PriceService::formatPrice($sale->saleStay);
+            }
         });
         return response()->json($sales);
     }
@@ -127,5 +137,15 @@ class SaleController extends Controller
 
         // update the product in the stock
         $product->save();
+    }
+
+    public function checkValidation(Request $request, Sale $sale): JsonResponse
+    {
+        $sale->saleStay = $sale->saleStay - (float) $request->stay ;
+        if($sale->saleStay === 0.0){
+            $sale->stateSale = 'Valider';
+        }
+        $sale->save();
+        return response()->json(['success' => true]);
     }
 }
