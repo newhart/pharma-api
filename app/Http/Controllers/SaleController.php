@@ -65,13 +65,12 @@ class SaleController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function convertToPercentage($data, $maxValue)
+    private function convertToPercentage(array $data, $maxValue): array
     {
-        // Fonction de transformation pour calculer le pourcentage
         $transformFunction = function ($value) use ($maxValue) {
             return ($maxValue > 0) ? ($value / $maxValue) * 100 : 0;
         };
-        // Appliquer la fonction de transformation à chaque élément du tableau
+
         return array_map($transformFunction, $data);
     }
 
@@ -295,5 +294,11 @@ class SaleController extends Controller
         }
         $sale->save();
         return response()->json(['success' => true]);
+    }
+
+    public function getCountInvalidSale(): JsonResponse
+    {
+        $sale = Sale::where('stateSale', 'Annuler')->sum('SaleAmout');
+        return response()->json(['sale' => $sale]);
     }
 }
