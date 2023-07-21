@@ -65,6 +65,16 @@ class SaleController extends Controller
         return response()->json(['success' => true]);
     }
 
+    private function convertToPercentage($data, $maxValue)
+    {
+        // Fonction de transformation pour calculer le pourcentage
+        $transformFunction = function ($value) use ($maxValue) {
+            return ($maxValue > 0) ? ($value / $maxValue) * 100 : 0;
+        };
+        // Appliquer la fonction de transformation à chaque élément du tableau
+        return array_map($transformFunction, $data);
+    }
+
     public function lastWeekSales()
     {
         // Définir la locale de Carbon en français
@@ -110,7 +120,7 @@ class SaleController extends Controller
         }
 
         // Return the sales data as a JSON response
-        return response()->json(['sales' => $salesArray, 'maxResult' => $maxResult]);
+        return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
     }
 
     // Function to get the day name in French based on the day number (1 for Monday, 2 for Tuesday, etc.)
@@ -170,7 +180,7 @@ class SaleController extends Controller
         }
 
         // Return the sales data as a JSON response
-        return response()->json(['sales' => $salesArray, 'maxResult' => $maxResult]);
+        return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
     }
 
     public function index(Request $request): JsonResponse
