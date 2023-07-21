@@ -67,27 +67,66 @@ class SaleController extends Controller
 
     public function lastWeekSales()
     {
+        // Définir la locale de Carbon en français
+        Carbon::setLocale('fr');
         // Get the start and end dates of the current week
         $startDate = Carbon::now()->subWeek()->startOfWeek();
         $endDate = Carbon::now()->subWeek()->endOfWeek();
 
         // Retrieve sales data for this week
+
+        // Retrieve sales data for one year and update the values for each day
         $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('DATE(created_at) as date, SUM(saleAmout) as ca')
-            ->orderBy('date', 'desc')
-            ->groupBy('date')
+            ->selectRaw('DAYOFWEEK(created_at) as day, SUM(saleAmout) as ca')
+            ->groupBy('day')
             ->get();
 
-        // Create an associative array to store the results
-        $salesArray = [];
+        // Create an associative array to store the results with initial values set to zero
+        $salesArray = [
+            'Lun' => 0, // Monday
+            'Mar' => 0, // Tuesday
+            'Mer' => 0, // Wednesday
+            'Jeu' => 0, // Thursday
+            'Ven' => 0, // Friday
+            'Sam' => 0, // Saturday
+            'Dim' => 0, // Sunday
+        ];
+
+        // Initialize a variable to store the maximum result
+        $maxResult = 0;
 
         // Iterate through the sales data and put the results in the array
         foreach ($sales as $key =>  $sale) {
-            $salesArray[$key + 1] = $sale->ca;
+            $dayNumber = intval($sale->day);
+            if ($dayNumber >= 1 && $dayNumber <= 7) {
+                $dayName = $this->getDayName($dayNumber);
+                $salesArray[$dayName] = $sale->ca;
+
+                // Update the maximum result if the current CA is greater
+                if ($sale->ca > $maxResult) {
+                    $maxResult = $sale->ca;
+                }
+            }
         }
 
         // Return the sales data as a JSON response
-        return response()->json($salesArray);
+        return response()->json(['sales' => $salesArray, 'maxResult' => $maxResult]);
+    }
+
+    // Function to get the day name in French based on the day number (1 for Monday, 2 for Tuesday, etc.)
+    private function getDayName($dayNumber)
+    {
+        $days = [
+            1 => 'Lun',
+            2 => 'Mar',
+            3 => 'Mer',
+            4 => 'Jeu',
+            5 => 'Ven',
+            6 => 'Sam',
+            7 => 'Dim',
+        ];
+
+        return $days[$dayNumber];
     }
 
     public function salesForOneYear()
@@ -103,15 +142,35 @@ class SaleController extends Controller
             ->get();
 
         // Create an associative array to store the results
-        $salesArray = [];
+        $salesArray = [
+            Carbon::create()->month(1)->formatLocalized('%b') => 0, // Jan
+            Carbon::create()->month(2)->formatLocalized('%b') => 0, // Fév
+            Carbon::create()->month(3)->formatLocalized('%b') => 0, // Mar
+            Carbon::create()->month(4)->formatLocalized('%b') => 0, // Avr
+            Carbon::create()->month(5)->formatLocalized('%b') => 0, // Mai
+            Carbon::create()->month(6)->formatLocalized('%b') => 0, // Juin
+            Carbon::create()->month(7)->formatLocalized('%b') => 0, // Juil
+            Carbon::create()->month(8)->formatLocalized('%b') => 0, // Aoû
+            Carbon::create()->month(9)->formatLocalized('%b') => 0, // Sep
+            Carbon::create()->month(10)->formatLocalized('%b') => 0, // Oct
+            Carbon::create()->month(11)->formatLocalized('%b') => 0, // Nov
+            Carbon::create()->month(12)->formatLocalized('%b') => 0, // Déc
+        ];
+        // Initialize a variable to store the maximum result
+        $maxResult = 0;
 
         // Iterate through the sales data and put the results in the array
         foreach ($sales as $key =>  $sale) {
-            $salesArray[$key + 1] = $sale->ca;
+            $monthName = Carbon::create()->month($sale->month)->formatLocalized('%b');
+            $salesArray[$monthName] = $sale->ca;
+            // Update the maximum result if the current CA is greater
+            if ($sale->ca > $maxResult) {
+                $maxResult = $sale->ca;
+            }
         }
 
         // Return the sales data as a JSON response
-        return response()->json($salesArray);
+        return response()->json(['sales' => $salesArray, 'maxResult' => $maxResult]);
     }
 
     public function index(Request $request): JsonResponse
@@ -174,6 +233,48 @@ class SaleController extends Controller
 
         // update the product in the stock
         $product->save();
+    }
+
+    public function salesForLastMonth()
+    {
+        // Définir la locale de Carbon en français
+        Carbon::setLocale('fr');
+
+        // Get the start and end dates of the last month
+        $startDate = Carbon::now()->subMonth()->startOfMonth();
+        $endDate = Carbon::now()->subMonth()->endOfMonth();
+
+        // Calculate the number of weeks in the last month
+        $numberOfWeeks = $startDate->diffInWeeks($endDate);
+
+        // Create an associative array to store the sales for each week
+        $weeklySales = [];
+        // Initialize a variable to store the maximum sales amount
+        $maxSales = 0;
+
+        // Iterate through the weeks and calculate the sales for each week
+        for ($week = 0; $week < $numberOfWeeks; $week++) {
+            $startOfWeek = $startDate->copy()->addWeeks($week);
+            $endOfWeek = $startDate->copy()->addWeeks($week + 1)->subDay();
+
+            // Retrieve sales data for the current week
+            $sales = Sale::whereBetween('created_at', [$startOfWeek, $endOfWeek])
+                ->sum('saleAmout');
+
+            // Format the week range (e.g., '1-7 Mar' for the first week of March)
+            $weekRange = $startOfWeek->format('j') . '-' . $endOfWeek->formatLocalized('%a');
+
+            // Store the sales for the current week in the associative array
+            $weeklySales[$weekRange] = $sales;
+
+            // Update the maximum sales amount if the current week's sales are higher
+            if ($sales > $maxSales) {
+                $maxSales = $sales;
+            }
+        }
+
+        // Return the weekly sales as a JSON response
+        return response()->json(['sales' => $weeklySales, 'max' => $maxSales]);
     }
 
     public function checkValidation(Request $request, Sale $sale): JsonResponse
