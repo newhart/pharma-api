@@ -122,7 +122,6 @@ class SaleController extends Controller
         return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
     }
 
-    // Function to get the day name in French based on the day number (1 for Monday, 2 for Tuesday, etc.)
     private function getDayName($dayNumber)
     {
         $days = [
