@@ -4,8 +4,11 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\LogoutUserController;
+use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SettingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 // auth user
@@ -37,3 +40,11 @@ Route::post('/order/{id}', [OrderController::class, 'store']);
 Route::get('/orders', [OrderController::class, 'index']);
 Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel']);
 Route::post('/order/validation/store', [OrderController::class, 'validation']);
+// setting ressource
+Route::get('/settings', [SettingController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/settings', [SettingController::class, 'store'])->middleware('auth:sanctum');
+// menus ressource
+Route::get('/menus', [MenuController::class, 'index'])->middleware('auth:sanctum');
+// roles ressource
+Route::get('/roles', [RoleController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/roles', [RoleController::class, 'store'])->middleware('auth:sanctum');

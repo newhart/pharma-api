@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,14 +15,23 @@ class UserController extends Controller
 {
     public function index(): JsonResponse
     {
-        return  response()->json(User::paginate(2));
+        return  response()->json(User::with('role')->paginate(10));
     }
 
     public function store(UserRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $role = Role::findOrFail($data['role_id']);
+        if (!$role) {
+            return response()->json(['error' => true]);
+        }
         $data['password'] =  Hash::make($data['password']);
-        $user = User::create($data);
+        $user = User::create([
+            'role' => $data['role'],
+            'name' => $data['name'],
+            'role_id' => $role->id,
+            'password' => $data['password']
+        ]);
         if ($user) {
             return response()->json(['success' => true]);
         }
@@ -40,7 +50,11 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         if ($request->user()->can('update', $user)) {
-            $user->update($request->all());
+            $user->update([
+                'name' => $request->name,
+                'role' => $request->role['type'],
+                'role_id' => $request->role['id']
+            ]);
             return response()->json(['success' => true]);
         }
         return response()->json(['success' => true]);
