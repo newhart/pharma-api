@@ -15,33 +15,29 @@ class SaleController extends Controller
 {
     public function store(SaleRequest $request): JsonResponse
     {
-        // find the product sale
+        // store the new sale
+        $sale = Sale::create([
+            'saleDate' => now(),
+            'playmentDatePrevueAt' => now(),
+            'playmentMode' => 'espece',
+            'estACredit' => 'test',
+            'saleAmout' => $request->total,
+            'salePayed' => $request->total,
+            'stateSale' => 'En cours',
+            'user_id' => $request->user()->id,
+            'saleStay' => 0.00
+        ]);
+        // validate the sale if all payment is done 
+        if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
+            $sale->stateSale = 'Valider';
+            $sale->save();
+        }
         foreach ($request->cartProducts as $data) {
             $product = Product::findOrFail($data['id']);
             if ($product) {
                 try {
                     $this->additionalQuantityProduct($data, $product);
-                    if ($data['remise']) {
-                        $amountRemise = $data['montant'] *  ((int) $data['remise'] / 100);
-                        $data['montant'] -= $amountRemise;
-                    }
-                    $sale = Sale::create([
-                        'saleDate' => now(),
-                        'playmentDatePrevueAt' => now(),
-                        'playmentMode' => 'espece',
-                        'estACredit' => 'test',
-                        'saleAmout' => $data['montant'],
-                        'salePayed' => $data['montant'],
-                        'stateSale' => 'En cours',
-                        'user_id' => $request->user()->id,
-                        'saleStay' => 0.00
-                    ]);
-                    // update if the sale is completed
-                    if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
-                        $sale->stateSale = 'Valider';
-                        $sale->save();
-                    }
-
+                    //  associate the sale product 
                     DB::table('product_sale')->insert([
                         'product_id' => $product->id,
                         'sale_id' => $sale->id,
@@ -299,5 +295,11 @@ class SaleController extends Controller
     {
         $sale = Sale::where('stateSale', 'Annuler')->sum('SaleAmout');
         return response()->json(['sale' => $sale]);
+    }
+    public function getCaNow(): JsonResponse
+    {
+        $totalSalesAmount = Sale::whereDate('created_at', now())
+            ->sum('saleAmout');
+        return response()->json($totalSalesAmount);
     }
 }
