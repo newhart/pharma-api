@@ -11,6 +11,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PdfController;
 // auth user
 Route::post('login', [\App\Http\Controllers\LoginUserController::class, 'login']);
 // logout  user
@@ -20,6 +21,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 // route product resource
 Route::resource('product', ProductController::class)->middleware('auth:sanctum');
+
+// pdf
+Route::get('/download-product-list', [PdfController::class, 'generateProductList']);
+
 // get all users
 Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');
 Route::get('/users/item', [UserController::class, 'item'])->middleware('auth:sanctum');
