@@ -20,35 +20,36 @@
         box-sizing: border-box;
       }
 
-      .header {
+            .header {
         position: relative;
         padding: 10px;
         border-bottom: 2px solid #ddd;
-        height: 50px; 
+        height: 50px;
       }
 
-      .header h3, .header p {
+      .header img {
         position: absolute;
-        margin: 0;
-        /* font-size: 12px; */
+        left: 0;
+        top: 0;
+        max-width: 110px;
+        height: auto;
       }
 
       .header h3:nth-of-type(1) {
-        left: 0; 
-        /* font-size: 12px; */
-        margin-top: 15px;
-      }
-
-      .header h3:nth-of-type(2) {
+        position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        /* font-size: 12px; */
+        margin: 0;
+        top: 0;
       }
 
-      .header p {
-        right: 0; 
-        text-align: right;
+      .header .date {
+        position: absolute;
+        right: 0;
+        top: 0;
+        margin: 0;
       }
+
 
       th.designation {
         width: 300px; 
@@ -114,9 +115,14 @@
 <body>
 <div class="parent">
       <div class="header">
-        <h3>Pharacie Mahavatse</h3>
+          @if($logoBase64)
+            <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 110px;">
+          @else
+            <h3>Pharacie Mahavatse</h3>
+          @endif
+
         <h3>Article en stock</h3>
-        <p>{{ now()->format('d/m/Y H:i') }}</p>
+        <p class="date">{{ now()->format('d/m/Y H:i') }}</p>
    
       </div>
       <div class="content">
