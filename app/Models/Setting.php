@@ -9,10 +9,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Setting extends Model
 {
     use HasFactory;
-    protected  $fillable = ['limit', 'type', 'user_id', 'color'];
+
+    protected $fillable = [
+        'limit',
+        'type',
+        'user_id',
+        'color',
+        'logo_path', // Ajout du champ pour le logo
+    ];
 
     public function user(): BelongsTo
     {
-        return  $this->belongsTo(User::class);
+        return $this->belongsTo(User::class);
     }
 }
