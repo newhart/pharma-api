@@ -25,6 +25,20 @@ Route::resource('product', ProductController::class)->middleware('auth:sanctum')
 // pdf
 Route::get('/download-product-list', [PdfController::class, 'generateProductList']);
 
+//==
+
+
+ // Mettre à jour le logo
+Route::post('/settings/logo', [SettingController::class, 'updateLogo'])->middleware('auth:sanctum');
+// routes/api.php
+Route::get('/settings/logos', [SettingController::class, 'listLogos']);
+
+// Supprimer le logo
+Route::delete('/settings/logo', [SettingController::class, 'deleteLogo'])->middleware('auth:sanctum');
+
+
+//==
+
 // get all users
 Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');
 Route::get('/users/item', [UserController::class, 'item'])->middleware('auth:sanctum');
