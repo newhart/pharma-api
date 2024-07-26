@@ -7,7 +7,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Product;
 use App\Models\Setting; // Assurez-vous d'importer le modèle Setting
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Storage;         
 
 class PdfController extends Controller
 {
@@ -25,7 +25,10 @@ class PdfController extends Controller
 
         // Calculer le nombre total de produits
         $totalProducts = $products->count();
-        
+
+        // heur madagascar
+        $now = Carbon::now('Indian/Antananarivo');
+
         // date actuelle
         $dateToday = Carbon::now()->format('d/m/Y');
 
@@ -42,6 +45,7 @@ class PdfController extends Controller
             'products' => $products,
             'totalProducts' => $totalProducts,
             'dateToday' => $dateToday,
+            'now' => $now,
             'logoBase64' => $logoBase64 // Passer le logo en base64 à la vue
         ]);
 

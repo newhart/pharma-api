@@ -122,7 +122,7 @@
           @endif
 
         <h3>Article en stock</h3>
-        <p class="date">{{ now()->format('d/m/Y H:i') }}</p>
+        <p class="date">{{ $now->format('d/m/Y H:i') }}</p>
    
       </div>
       <div class="content">
