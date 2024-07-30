@@ -25,6 +25,15 @@ Route::resource('product', ProductController::class)->middleware('auth:sanctum')
 // pdf
 Route::get('/download-product-list', [PdfController::class, 'generateProductList']);
 
+
+// Mettre à jour le type et la couleur
+Route::post('/settings/color', [SettingController::class, 'updateColor'])->middleware('auth:sanctum');
+Route::get('/settings/colors', [SettingController::class, 'listSettings']);
+
+
+// Supprimer le type et la couleur
+Route::delete('/settings/color', [SettingController::class, 'deleteColor'])->middleware('auth:sanctum');
+
 //==
 
 

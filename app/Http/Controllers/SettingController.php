@@ -18,39 +18,40 @@ class SettingController extends Controller
     }
 
     public function store(Request $request): JsonResponse
-    {
-        $request->validate([
-            'limit' => ['required', 'integer'],
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
+{
+    $request->validate([
+        'limit' => ['required', 'integer'],
+        'type' => 'required|string|in:detailler,semiDetailler,nonDetailler',
+        'color' => 'required|string|size:7',
+        'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ]);
 
-        $setting = Setting::first(); // Supposer qu'il y a un seul enregistrement de paramètres
+    // Supprimer les anciens paramètres avec le même type
+    Setting::where('type', $request->type)->delete();
 
-        if (!$setting) {
-            $setting = new Setting();
+    $user = User::findOrFail($request->user()->id);
+
+    $setting = new Setting();
+    $setting->limit = $request->limit;
+    $setting->type = $request->type;
+    $setting->color = $request->color;
+    $setting->user_id = $user->id;
+
+    if ($request->hasFile('logo')) {
+        // Supprimer l'ancien logo s'il existe
+        if ($setting->logo) {
+            Storage::disk('public')->delete($setting->logo);
         }
 
-        $user = User::findOrFail($request->user()->id);
-
-        $setting->limit = $request->limit;
-        $setting->type = $request->type;
-        $setting->color = $request->color;
-        $setting->user_id = $user->id;
-
-        if ($request->hasFile('logo')) {
-            // Supprimer l'ancien logo s'il existe
-            if ($setting->logo) {
-                Storage::disk('public')->delete($setting->logo);
-            }
-
-            $logoPath = $request->file('logo')->store('logos', 'public');
-            $setting->logo = $logoPath;
-        }
-
-        $setting->save();
-
-        return response()->json(['success' => true, 'data' => $setting], 200);
+        $logoPath = $request->file('logo')->store('logos', 'public');
+        $setting->logo = $logoPath;
     }
+
+    $setting->save();
+
+    return response()->json(['success' => true, 'data' => $setting], 200);
+}
+
 
     public function updateLogo(Request $request): JsonResponse
     {
@@ -103,5 +104,60 @@ class SettingController extends Controller
         }
 
         return response()->json(['message' => 'No logo found'], 404);
+    }
+
+    public function updateColor(Request $request): JsonResponse
+{
+    $request->validate([
+        'type' => 'required|string|in:detailler,semiDetailler,nonDetailler',
+        'color' => 'required|string|size:7',
+    ]);
+
+    $type = $request->input('type');
+    $color = $request->input('color');
+
+    // Chercher l'entrée existante avec le même type
+    $existingSetting = Setting::where('type', $type)->first();
+
+    if ($existingSetting) {
+        // Si l'entrée existe, mettre à jour la couleur
+        $existingSetting->color = $color;
+        $existingSetting->save();
+
+        // Supprimer les autres enregistrements avec le même type
+        Setting::where('type', $type)->where('id', '!=', $existingSetting->id)->delete();
+    } else {
+        // Si l'entrée n'existe pas, en créer une nouvelle
+        $setting = new Setting();
+        $setting->type = $type;
+        $setting->color = $color;
+        $setting->user_id = $request->user()->id; // Assurez-vous que l'utilisateur est authentifié
+        $setting->save();
+    }
+
+    return response()->json(['message' => 'Color setting updated successfully', 'data' => $existingSetting ?? $setting], 200);
+}
+
+
+    public function deleteColor(): JsonResponse
+    {
+        $setting = Setting::whereNotNull('color')->first(); // Trouver un enregistrement avec une couleur
+
+        if ($setting) {
+            $setting->color = null;
+            $setting->type = null;
+            $setting->save();
+
+            return response()->json(['message' => 'Color and type deleted successfully'], 200);
+        }
+
+        return response()->json(['message' => 'No color setting found to delete'], 404);
+    }
+
+    public function listSettings(): JsonResponse
+    {
+        $settings = Setting::all(); // Récupère tous les enregistrements de paramètres
+
+        return response()->json($settings, 200);
     }
 }

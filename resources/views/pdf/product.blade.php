@@ -52,7 +52,7 @@
 
 
       th.designation {
-        width: 300px; 
+        width: 500px; 
       }
 
       table {
@@ -118,10 +118,10 @@
           @if($logoBase64)
             <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 110px;">
           @else
-            <h3>Pharacie Mahavatse</h3>
+            <h3>Pharacie</h3>
           @endif
 
-        <h3>Article en stock</h3>
+        <h3>Etat en stock</h3>
         <p class="date">{{ $now->format('d/m/Y H:i') }}</p>
    
       </div>
@@ -130,9 +130,9 @@
           <thead>
             <tr>
               <th class="designation">Désignation</th>  
-              <th>Quantité gellule</th>
-              <th>Quantité plaquette</th>
-              <th>Quantité boite</th>
+              <th>Q/té gellule</th>
+              <th>Q/té plaquette</th>
+              <th>Q/té boite</th>
             </tr>
           </thead>
           <tbody>
