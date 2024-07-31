@@ -15,7 +15,12 @@ class Setting extends Model
         'type',
         'user_id',
         'color',
-        'logo_path', // Ajout du champ pour le logo
+       
+        'nomEntreprise',
+        'nif',
+        'stat',
+        'mail',
+        'tel',
     ];
 
     public function user(): BelongsTo

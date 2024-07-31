@@ -19,13 +19,39 @@
         padding-bottom: 60px; 
         box-sizing: border-box;
       }
+      .header {
+    position: relative;
+    padding: 10px;
+    border-bottom: 2px solid #ddd;
+    height: 100px; /* Hauteur totale de la section header */
+    /* background-color: aqua; */
+    box-sizing: border-box;
+    overflow: hidden; /* Assurez-vous que rien ne dépasse de la section */
+}
 
-            .header {
-        position: relative;
-        padding: 10px;
-        border-bottom: 2px solid #ddd;
-        height: 50px;
-      }
+.logo-section {
+    position: absolute; /* Permet au logo de rester en haut à gauche */
+    top: 10px;
+    left: 10px;
+}
+
+.company-info {
+    position: absolute;
+    top: 5px; /* Ajustez la position verticale selon le besoin */
+    left: 130px; /* Ajustez la position horizontale pour ne pas chevaucher le logo */
+    right: 10px; /* Assurez-vous que la section prend tout l'espace restant */
+    overflow: hidden;
+    font-size: 10px; /* Taille de police plus petite */
+}
+
+.company-info p {
+    margin: 0;
+    padding: 2px 0;
+    white-space: nowrap; /* Évite les retours à la ligne dans les paragraphes */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 
       .header img {
         position: absolute;
@@ -115,11 +141,20 @@
 <body>
 <div class="parent">
       <div class="header">
+        <div class="logo-section">
           @if($logoBase64)
-            <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 110px;">
+              <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 110px;">
           @else
-            <h3>Pharacie</h3>
+              <h3>Pharacie</h3>
           @endif
+      </div>
+      <div class="company-info">
+          <p>{{ $nomEntreprise }}</p>
+          <p>{{ $nif }}</p>
+          <p>{{ $stat }}</p>
+          <p>{{ $mail }}</p>
+          <p>{{ $tel }}</p>
+      </div>
 
         <h3>Etat en stock</h3>
         <p class="date">{{ $now->format('d/m/Y H:i') }}</p>

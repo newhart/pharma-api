@@ -24,6 +24,7 @@ class SettingController extends Controller
         'type' => 'required|string|in:detailler,semiDetailler,nonDetailler',
         'color' => 'required|string|size:7',
         'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+
     ]);
 
     // Supprimer les anciens paramètres avec le même type
@@ -36,6 +37,12 @@ class SettingController extends Controller
     $setting->type = $request->type;
     $setting->color = $request->color;
     $setting->user_id = $user->id;
+    // $setting->nomEntreprise = $user->nomEntreprise;
+    // $setting->nif = $user->nif;
+    // $setting->stat = $user->stat;
+    // $setting->mail = $user->mail;
+    // $setting->tel = $user->tel;
+
 
     if ($request->hasFile('logo')) {
         // Supprimer l'ancien logo s'il existe
@@ -56,7 +63,12 @@ class SettingController extends Controller
     public function updateLogo(Request $request): JsonResponse
     {
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'nomEntreprise' => 'nullable|string',
+            'nif' => 'nullable|string',
+            'stat' => 'nullable|string',
+            'mail' => 'nullable|email',
+            'tel' => 'nullable|string'
         ]);
 
         $setting = Setting::first(); // Supposer qu'il y a un seul enregistrement de paramètres
@@ -68,17 +80,43 @@ class SettingController extends Controller
             }
 
             $logoPath = $request->file('logo')->store('logos', 'public');
-            if ($setting) {
-                $setting->logo = $logoPath;
-                $setting->save();
-            } else {
-                // Créer un nouvel enregistrement si aucun n'existe
-                Setting::create(['logo' => $logoPath]);
-            }
+            $setting->logo = $logoPath;
         }
 
-        return response()->json(['message' => 'Logo mis à jour avec succès', 'logo' => $logoPath], 200);
+        // Mettre à jour les autres champs
+        if ($request->has('nomEntreprise')) {
+            $setting->nomEntreprise = $request->input('nomEntreprise');
+        }
+        if ($request->has('nif')) {
+            $setting->nif = $request->input('nif');
+        }
+        if ($request->has('stat')) {
+            $setting->stat = $request->input('stat');
+        }
+        if ($request->has('mail')) {
+            $setting->mail = $request->input('mail');
+        }
+        if ($request->has('tel')) {
+            $setting->tel = $request->input('tel');
+        }
+
+        if ($setting) {
+            $setting->save();
+        } else {
+            // Créer un nouvel enregistrement si aucun n'existe
+            Setting::create($request->all());
+        }
+
+        return response()->json(['message' => 'Logoo et autres paramètres mis à jour avec succès', 
+        'logo' => $logoPath ?? $setting->logo, 
+        'nomEntreprise' =>$setting->nomEntreprise,
+        'nif' => $setting->nif,
+        'stat' => $setting->stat,
+        'mail' => $setting->mail,
+        'tel' => $setting->tel
+     ], 200);
     }
+
 
     public function deleteLogo(): JsonResponse
     {
@@ -100,7 +138,13 @@ class SettingController extends Controller
 
         if ($setting && $setting->logo) {
             $logoUrl = Storage::url($setting->logo);
-            return response()->json(['logo_url' => $logoUrl], 200);
+            return response()->json(['logo_url' => $logoUrl, 
+                                    'nomEntreprise' =>$setting->nomEntreprise,
+                                    'nif' => $setting->nif,
+                                    'stat' => $setting->stat,
+                                    'mail' => $setting->mail,
+                                    'tel' => $setting->tel
+                                    ], 200);
         }
 
         return response()->json(['message' => 'No logo found'], 404);
