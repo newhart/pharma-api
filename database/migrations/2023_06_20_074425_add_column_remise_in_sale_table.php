@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sales', function (Blueprint $table) {
-            $table->unsignedDouble('remise')->nullable();
+            $table->unsignedDouble('remise')->nullable()->after('saleStay');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('sales', function (Blueprint $table) {
-            $table->removeColumn('remise');
+            $table->dropColumn('remise');
         });
     }
 };

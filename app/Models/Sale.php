@@ -10,7 +10,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Sale extends Model
 {
     use HasFactory;
-    protected $guarded = [];
+    protected $fillable = [
+        'saleDate',
+        'saleAmout',
+        'salePayed',
+        'saleStay',
+        'estACredit',
+        'playmentMode',
+        'playmentDatePrevueAt',
+        'clientName',
+        'description',
+        'stateSale',
+        'remise', // Ajouté ici
+    ];
+
 
     public function products(): BelongsToMany
     {

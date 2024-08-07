@@ -25,7 +25,8 @@ class SaleController extends Controller
             'salePayed' => $request->total,
             'stateSale' => 'En cours',
             'user_id' => $request->user()->id,
-            'saleStay' => 0.00
+            'saleStay' => 0.00,
+            'remise' => $request->remise ?? 0.00,
         ]);
         // validate the sale if all payment is done 
         if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
