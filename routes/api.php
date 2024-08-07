@@ -34,9 +34,6 @@ Route::get('/settings/colors', [SettingController::class, 'listSettings']);
 // Supprimer le type et la couleur
 Route::delete('/settings/color', [SettingController::class, 'deleteColor'])->middleware('auth:sanctum');
 
-//==
-
-
  // Mettre à jour le logo
 Route::post('/settings/logo', [SettingController::class, 'updateLogo'])->middleware('auth:sanctum');
 // routes/api.php
@@ -45,8 +42,6 @@ Route::get('/settings/logos', [SettingController::class, 'listLogos']);
 // Supprimer le logo
 Route::delete('/settings/logo', [SettingController::class, 'deleteLogo'])->middleware('auth:sanctum');
 
-
-//==
 
 // get all users
 Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');

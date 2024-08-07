@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Liste produit</title>
-   
     <style>
       body {
         font-family: sans-serif;
@@ -19,49 +18,45 @@
         padding-bottom: 60px; 
         box-sizing: border-box;
       }
+      
       .header {
-    position: relative;
-    padding: 10px;
-    border-bottom: 2px solid #ddd;
-    height: 100px; /* Hauteur totale de la section header */
-    /* background-color: aqua; */
-    box-sizing: border-box;
-    overflow: hidden; /* Assurez-vous que rien ne dépasse de la section */
-}
-
-.logo-section {
-    position: absolute; /* Permet au logo de rester en haut à gauche */
-    top: 10px;
-    left: 10px;
-}
-
-.company-info {
-    position: absolute;
-    top: 5px; /* Ajustez la position verticale selon le besoin */
-    left: 130px; /* Ajustez la position horizontale pour ne pas chevaucher le logo */
-    right: 10px; /* Assurez-vous que la section prend tout l'espace restant */
-    overflow: hidden;
-    font-size: 10px; /* Taille de police plus petite */
-}
-
-.company-info p {
-    margin: 0;
-    padding: 2px 0;
-    white-space: nowrap; /* Évite les retours à la ligne dans les paragraphes */
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-
-      .header img {
-        position: absolute;
-        left: 0;
-        top: 0;
-        max-width: 110px;
-        height: auto;
+        position: relative;
+        padding: 10px;
+        border-bottom: 2px solid #ddd;
+        height: 180px; /* Hauteur totale de la section header */
+        /* background-color: aqua; */
+        box-sizing: border-box;
+        overflow: hidden; /* Assurez-vous que rien ne dépasse de la section */
       }
 
-      .header h3:nth-of-type(1) {
+      .logo-section {
+        position: absolute; /* Permet au logo de rester en haut à gauche */
+        top: 0px;
+        left: 0px;
+        max-width: 150px;
+        text-align: center;
+      }
+
+      .logo-section img {
+        max-width: 100px;
+        height: auto;
+        display: block; /* Assure que l'image est traitée comme un bloc pour centrer */
+        margin: 0 auto;
+      }
+
+      .logo-section .company-info {
+        font-size: 10px; /* Taille de police plus petite */
+      }
+
+      .logo-section .company-info p {
+        margin: 0;
+        padding: 2px 0;
+        white-space: nowrap; /* Évite les retours à la ligne dans les paragraphes */
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .header h3 {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
@@ -75,7 +70,6 @@
         top: 0;
         margin: 0;
       }
-
 
       th.designation {
         width: 500px; 
@@ -133,6 +127,7 @@
         right: 20px; 
         text-align: right; 
       }
+
       .bold-text {
         font-weight: bold;
       }
@@ -141,24 +136,22 @@
 <body>
 <div class="parent">
       <div class="header">
-        <div class="logo-section">
-          @if($logoBase64)
-              <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 110px;">
-          @else
-              <h3>Pharacie</h3>
-          @endif
-      </div>
-      <div class="company-info">
-          <p>{{ $nomEntreprise }}</p>
-          <p>{{ $nif }}</p>
-          <p>{{ $stat }}</p>
-          <p>{{ $mail }}</p>
-          <p>{{ $tel }}</p>
-      </div>
-
-        <h3>Etat en stock</h3>
-        <p class="date">{{ $now->format('d/m/Y H:i') }}</p>
-   
+            <div class="logo-section">
+                @if($logoBase64)
+                    <img src="{{ $logoBase64 }}" alt="Logo">
+                @else
+                    <h3>Pharacie</h3>
+                @endif
+                <div class="company-info">
+                    <p>{{ $nomEntreprise }}</p>
+                    <p>{{ $nif }}</p>
+                    <p>{{ $stat }}</p>
+                    <p>{{ $mail }}</p>
+                    <p>{{ $tel }}</p>
+                </div>
+            </div>
+            <h3>Etat en stock</h3>
+            <p class="date">{{ $now->format('d/m/Y H:i') }}</p>
       </div>
       <div class="content">
         <table>
