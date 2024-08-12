@@ -59,6 +59,10 @@ Route::get('/sales/for-one-year', [SaleController::class, 'salesForOneYear'])->m
 Route::get('/sales/ca-for-now', [SaleController::class, 'getCaNow'])->middleware('auth:sanctum');
 Route::get('/sales/last-mounth-sale', [SaleController::class, 'salesForLastMonth'])->middleware('auth:sanctum');
 Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->middleware('auth:sanctum');
+Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress']);
+Route::get('/sales/in-progress', [SaleController::class, 'listInProgress']);
+
+
 // order api ressource
 Route::post('/order/{id}', [OrderController::class, 'store']);
 Route::get('/orders', [OrderController::class, 'index']);

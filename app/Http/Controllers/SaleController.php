@@ -13,32 +13,49 @@ use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
 {
-    public function store(SaleRequest $request): JsonResponse
+        public function store(SaleRequest $request): JsonResponse
     {
-        // store the new sale
-        $sale = Sale::create([
-            'saleDate' => now(),
-            'playmentDatePrevueAt' => now(),
-            'playmentMode' => 'espece',
-            'estACredit' => 'test',
-            'saleAmout' => $request->total,
-            'salePayed' => $request->total,
-            'stateSale' => 'En cours',
-            'user_id' => $request->user()->id,
-            'saleStay' => 0.00,
-            'remise' => $request->remise ?? 0.00,
-        ]);
-        // validate the sale if all payment is done 
-        if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
-            $sale->stateSale = 'Valider';
-            $sale->save();
-        }
+        // Validation des quantité disponible
         foreach ($request->cartProducts as $data) {
-            $product = Product::findOrFail($data['id']);
+            $product = Product::find($data['id']);
             if ($product) {
-                try {
+                if ($product->quantityBoite < $data['quantityBoite'] ||
+                    $product->quantityPlaquette < $data['quantityPlaquette'] ||
+                    $product->quantityGellule < $data['quantityGellule']) {
+                    // Retourner un avertissement pour quantité insuffisante
+                    return response()->json([
+                        'warning' => 'Quantité en stock insuffisante !'
+                    ], 400);
+                }
+            } else {
+                return response()->json([
+                    'error' => 'Produit non trouvé pour : ' . $data['id']
+                ], 404);
+            }
+        }
+
+        // Traitement de la vente
+        try {
+            $sale = Sale::create([
+                'saleDate' => now(),
+                'playmentDatePrevueAt' => now(),
+                'playmentMode' => 'espece',
+                'estACredit' => 'test',
+                'saleAmout' => $request->total,
+                'salePayed' => $request->total,
+                'stateSale' => 'En cours',
+                'user_id' => $request->user()->id,
+                'saleStay' => 0.00,
+                'remise' => $request->remise ?? 0.00,
+            ]);
+            if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
+                $sale->stateSale = 'Valider';
+                $sale->save();
+            }
+            foreach ($request->cartProducts as $data) {
+                $product = Product::findOrFail($data['id']);
+                if ($product) {
                     $this->additionalQuantityProduct($data, $product);
-                    //  associate the sale product 
                     DB::table('product_sale')->insert([
                         'product_id' => $product->id,
                         'sale_id' => $sale->id,
@@ -51,16 +68,18 @@ class SaleController extends Controller
                         'priceSaleGellule' => PriceService::changePriceValidation($data['priceGellule']),
                         'priceSalePlaquette' => PriceService::changePriceValidation($data['pricePlaquette']),
                     ]);
-
-                    return response()->json(['success' => true]);
-                } catch (\Exception $e) {
-                    return response()->json(['error' => $e->getMessage()]);
                 }
             }
-        }
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de l’ajout de la vente.',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
+
 
     private function convertToPercentage(array $data, $maxValue): array
     {
@@ -197,7 +216,10 @@ class SaleController extends Controller
         if ($request->get('date')) {
             $query = $query->where('saleDate', $request->get('date'));
         }
-        $sales = $query->latest()->paginate(10);
+        $sales = $query
+        ->with('products')
+        ->latest()
+        ->paginate(10);
         $sales->map(function ($sale) {
             $sale->reference = 'PRDT-' . $sale->id;
             if ($sale->saleAmout) {
@@ -303,4 +325,74 @@ class SaleController extends Controller
             ->sum('saleAmout');
         return response()->json($totalSalesAmount);
     }
+
+
+    private function updateProductQuantities(array $data, Product $product): void
+    {
+        // Mise à jour des quantités disponibles
+        if ($data['quantityBoite']) {
+            $product->quantityBoite -= (int) $data['quantityBoite'];
+            $quantityPlaquetteForBoite = (int) $data['quantityBoite'] * (int) $product->numberPlaquette;
+            $product->quantityPlaquette -= (int) $quantityPlaquetteForBoite;
+            $quantityGelluleForPlaquette = (int) $product->numberGellule * (int) $quantityPlaquetteForBoite;
+            $product->quantityGellule -= (int) $quantityGelluleForPlaquette;
+        }
+        if ($data['quantityPlaquette']) {
+            $countRestPlaquetteQuantity = (int) ($product->quantityPlaquette - (int) $data['quantityPlaquette']);
+            $product->quantityPlaquette = $countRestPlaquetteQuantity;
+            $product->quantityBoite = $countRestPlaquetteQuantity / $product->numberPlaquette;
+            $product->quantityGellule = $product->numberGellule * $countRestPlaquetteQuantity;
+        }
+        if ($data['quantityGellule']) {
+            $countRestQuantityGellule = (int) $product->quantityGellule - (int) $data['quantityGellule'];
+            $product->quantityGellule = $countRestQuantityGellule;
+            $product->quantityPlaquette = $countRestQuantityGellule / $product->numberGellule;
+            $product->quantityBoite = $product->quantityPlaquette / $product->numberPlaquette;
+        }
+
+        // Mise à jour du produit dans le stock
+        $product->save();
+    }
+
+        public function countSalesInProgress(): JsonResponse
+    {
+        // Compter le nombre de ventes en cours
+        $count = Sale::where('stateSale', 'En cours')->count();
+
+        // Calculer le total des montants payés pour les ventes en cours
+         $totalSalePayed = Sale::where('stateSale', 'En cours')->sum('salePayed');
+
+        // Retourner la réponse avec le nombre de ventes en cours
+        return response()->json([
+            'count' => $count,
+            'totalSalePayed' => $totalSalePayed
+        ]);
+    }
+
+    public function listInProgress(): JsonResponse
+    {
+        // Récupérer toutes les ventes avec le statut 'En cours' et inclure les produits associés
+        $salesInProgress = Sale::where('stateSale', 'En cours')
+            ->with('products') // Charger les produits associés
+            ->get();
+
+        // Formater les montants des ventes si nécessaire
+        $salesInProgress->map(function ($sale) {
+            if ($sale->saleAmout) {
+                $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
+            }
+            if ($sale->salePayed) {
+                $sale->salePayed = PriceService::formatPrice($sale->salePayed);
+            }
+            if ($sale->saleStay) {
+                $sale->saleStay = PriceService::formatPrice($sale->saleStay);
+            }
+            return $sale;
+        });
+
+        // Retourner les ventes en cours en réponse JSON
+        return response()->json($salesInProgress);
+    }
+
+    
 }
