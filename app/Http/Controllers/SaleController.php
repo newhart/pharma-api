@@ -70,7 +70,7 @@ class SaleController extends Controller
                     ]);
                 }
             }
-
+                
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json([
@@ -304,15 +304,35 @@ class SaleController extends Controller
         return response()->json(['sales' => $weeklySales, 'max' => $maxSales]);
     }
 
-    public function checkValidation(Request $request, Sale $sale): JsonResponse
+        // Validation
+        public function checkValidation(Request $request): JsonResponse
     {
-        $sale->saleStay = $sale->saleStay - (float) $request->stay;
-        if ($sale->saleStay === 0.0) {
-            $sale->stateSale = 'Valider';
+        // Obtenir la liste des IDs de ventes depuis la requête
+        $saleIds = $request->input('sale_ids'); // Assurez-vous d'envoyer un tableau d'IDs en JSON depuis le client
+
+        // Valider que la liste des IDs est bien fournie
+        if (!is_array($saleIds) || empty($saleIds)) {
+            return response()->json(['success' => false, 'message' => 'No sales IDs provided'], 400);
         }
-        $sale->save();
+
+        // Récupérer toutes les ventes avec les IDs fournis
+        $sales = Sale::whereIn('id', $saleIds)->get();
+
+        // Mettre à jour chaque vente
+        foreach ($sales as $sale) {
+            $stay = $request->input('stay'); // Assurez-vous que 'stay' est bien fourni
+            $sale->saleStay = $sale->saleStay - (float) $stay;
+
+            // Vérifier si la vente est maintenant validée
+            if ($sale->saleStay <= 0.0) {
+                $sale->stateSale = 'Valider';
+            }
+            $sale->save();
+        }
+
         return response()->json(['success' => true]);
     }
+
 
     public function getCountInvalidSale(): JsonResponse
     {
@@ -354,6 +374,7 @@ class SaleController extends Controller
         $product->save();
     }
 
+        // methode count Sales in progress
         public function countSalesInProgress(): JsonResponse
     {
         // Compter le nombre de ventes en cours
@@ -369,29 +390,62 @@ class SaleController extends Controller
         ]);
     }
 
-    public function listInProgress(): JsonResponse
+        public function listInProgress(): JsonResponse
     {
         // Récupérer toutes les ventes avec le statut 'En cours' et inclure les produits associés
         $salesInProgress = Sale::where('stateSale', 'En cours')
             ->with('products') // Charger les produits associés
             ->get();
 
-        // Formater les montants des ventes si nécessaire
-        $salesInProgress->map(function ($sale) {
-            if ($sale->saleAmout) {
-                $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
-            }
-            if ($sale->salePayed) {
-                $sale->salePayed = PriceService::formatPrice($sale->salePayed);
-            }
-            if ($sale->saleStay) {
-                $sale->saleStay = PriceService::formatPrice($sale->saleStay);
-            }
-            return $sale;
+        // Formater les ventes et les produits
+        $formattedSales = $salesInProgress->map(function ($sale) {
+            // Formater les montants de la vente
+            $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
+            $sale->salePayed = PriceService::formatPrice($sale->salePayed);
+            $sale->saleStay = PriceService::formatPrice($sale->saleStay);
+            
+            // Construire la structure du panier
+            $cartProducts = $sale->products->map(function ($product) use ($sale) {
+                return [
+                    'sale_id' => $sale->id , 
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'montant' => $this->calculateProductAmount($product, $sale),
+                    'quantityBoite' => $product->pivot->quantityBoite,
+                    'quantityGellule' => $product->pivot->quantityGellule,
+                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                    'priceBoite' => $product->pivot->priceSaleBoite,
+                    'priceGellule' => $product->pivot->priceSaleGellule,
+                    'pricePlaquette' => $product->pivot->priceSalePlaquette,
+                ];
+            });
+
+             // Calculer le montant total de la vente
+            $totalAmount = $cartProducts->sum('montant');
+
+                return [
+                
+                    'cartProducts' => $cartProducts,
+                    'total' => $sale->saleAmout,
+                    'remise' => $sale->remise,
+                    'totalAmount' => $totalAmount,
+                ];
         });
 
-        // Retourner les ventes en cours en réponse JSON
-        return response()->json($salesInProgress);
+        $grandTotal = $formattedSales->sum('totalAmount');
+        // Retourner les ventes en cours formatées en réponse JSON
+        return response()->json([
+            'sales' => $formattedSales,
+            'grandTotal' => $grandTotal, // Ajouter le montant total de tous les paniers
+        ]);
+    }
+
+    // Méthode pour calculer le montant d'un produit
+    private function calculateProductAmount($product, $sale)
+    {
+        return ($product->pivot->priceSaleBoite * $product->pivot->quantityBoite) +
+            ($product->pivot->priceSaleGellule * $product->pivot->quantityGellule) +
+            ($product->pivot->priceSalePlaquette * $product->pivot->quantityPlaquette);
     }
 
     
