@@ -62,6 +62,8 @@ Route::get('/sales/last-mounth-sale', [SaleController::class, 'salesForLastMonth
 Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->middleware('auth:sanctum');
 Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress']);
 Route::get('/sales/in-progress', [SaleController::class, 'listInProgress']);
+Route::delete('/sales/in-progress/{id}', [SaleController::class, 'deleteInProgressSale']);
+
 
 
 // order api ressource

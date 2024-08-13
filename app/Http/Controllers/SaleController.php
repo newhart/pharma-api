@@ -376,15 +376,12 @@ class SaleController extends Controller
 
         // methode count Sales in progress
         public function countSalesInProgress(): JsonResponse
-    {
-        // Compter le nombre de ventes en cours
-        $count = Sale::where('stateSale', 'En cours')->count();
+    { 
+        $count = Sale::where('stateSale', 'En cours')->count();  // Compter le nombre de ventes en cours
 
-        // Calculer le total des montants payés pour les ventes en cours
-         $totalSalePayed = Sale::where('stateSale', 'En cours')->sum('salePayed');
+         $totalSalePayed = Sale::where('stateSale', 'En cours')->sum('salePayed');   // Calculer le total des montants payés pour les ventes en cours
 
-        // Retourner la réponse avec le nombre de ventes en cours
-        return response()->json([
+        return response()->json([ // Retourner la réponse avec le nombre de ventes en cours
             'count' => $count,
             'totalSalePayed' => $totalSalePayed
         ]);
@@ -439,6 +436,34 @@ class SaleController extends Controller
             'grandTotal' => $grandTotal, // Ajouter le montant total de tous les paniers
         ]);
     }
+
+        // supprimer panier en cours
+     
+            
+            public function deleteInProgressSale($id)
+    {
+        try {
+            $sale = Sale::findOrFail($id);
+
+            // Suppression des enregistrements associés dans product_sale
+            $sale->products()->delete(); // Assurez-vous que la relation `products` est définie dans le modèle Sale
+
+            $sale->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Panier supprimé avec succès.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de la suppression du panier.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+        
 
     // Méthode pour calculer le montant d'un produit
     private function calculateProductAmount($product, $sale)
