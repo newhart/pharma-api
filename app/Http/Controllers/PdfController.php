@@ -61,4 +61,6 @@ class PdfController extends Controller
 
         return $pdf->download('product_list.pdf');
     }
+
+    
 }

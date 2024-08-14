@@ -10,6 +10,10 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Setting;
+use App\Models\Logo;
+// use Barryvdh\DomPDF\Facade as PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SaleController extends Controller
 {
@@ -304,12 +308,18 @@ class SaleController extends Controller
         return response()->json(['sales' => $weeklySales, 'max' => $maxSales]);
     }
 
+        private function imageToBase64($path)
+    {
+        $image = Storage::disk('public')->get($path);
+        return 'data:image/' . pathinfo($path, PATHINFO_EXTENSION) . ';base64,' . base64_encode($image);
+    }
+
+
         // Validation
-        public function checkValidation(Request $request): JsonResponse
+        public function checkValidation(Request $request)
     {
         // Obtenir la liste des IDs de ventes depuis la requête
-        $saleIds = $request->input('sale_ids'); // Assurez-vous d'envoyer un tableau d'IDs en JSON depuis le client
-
+        $saleIds = $request->input('sale_ids');
         // Valider que la liste des IDs est bien fournie
         if (!is_array($saleIds) || empty($saleIds)) {
             return response()->json(['success' => false, 'message' => 'No sales IDs provided'], 400);
@@ -318,20 +328,87 @@ class SaleController extends Controller
         // Récupérer toutes les ventes avec les IDs fournis
         $sales = Sale::whereIn('id', $saleIds)->get();
 
+         // Initialiser un tableau pour stocker les ventes finalisées
+        $finalizedSales = [];
+
         // Mettre à jour chaque vente
         foreach ($sales as $sale) {
-            $stay = $request->input('stay'); // Assurez-vous que 'stay' est bien fourni
+            $stay = $request->input('stay'); 
             $sale->saleStay = $sale->saleStay - (float) $stay;
 
             // Vérifier si la vente est maintenant validée
             if ($sale->saleStay <= 0.0) {
                 $sale->stateSale = 'Valider';
+                $finalizedSales[] = $sale; 
             }
             $sale->save();
         }
 
-        return response()->json(['success' => true]);
+        $formattedSales = collect($finalizedSales)->map(function ($sale) {
+            // Formater les montants de la vente
+            $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
+            $sale->salePayed = PriceService::formatPrice($sale->salePayed);
+            $sale->saleStay = PriceService::formatPrice($sale->saleStay);
+            
+            // Construire la structure du panier
+            $cartProducts = $sale->products->map(function ($product) use ($sale) {
+                return [
+                    'sale_id' => $sale->id,
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'montant' => $this->calculateProductAmount($product, $sale),
+                    'quantityBoite' => $product->pivot->quantityBoite,
+                    'quantityGellule' => $product->pivot->quantityGellule,
+                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                    'priceBoite' => $product->pivot->priceSaleBoite,
+                    'priceGellule' => $product->pivot->priceSaleGellule,
+                    'pricePlaquette' => $product->pivot->priceSalePlaquette,
+                ];
+            });
+    
+            // Calculer le montant total de la vente
+            $totalAmount = $cartProducts->sum('montant');
+    
+            return [
+                'cartProducts' => $cartProducts,
+                'total' => $sale->saleAmout,
+                'remise' => $sale->remise,
+                'totalAmount' => $totalAmount,
+            ];
+        });
+    
+        $grandTotal = $formattedSales->sum('totalAmount');
+
+
+                // $logo = Logo::first(); 
+                // $logoBase64 = $logo ? $this->imageToBase64($logo->path) : null;
+                $setting = Setting::first();
+
+                // Générer le PDF avec les données récupérées
+                        
+                $pdf = Pdf::loadView('pdf.sales', [
+                    'sales' => $formattedSales,
+                    'grandTotal' => $grandTotal,
+                    'setting' => $setting, 
+                    'currentDateTime' => now()->format('d/m/y H:i'),
+                    // 'logoBase64' => $logoBase64,
+                ]);
+
+                // Spécifier les en-têtes pour le téléchargement
+                return $pdf->download('sales.pdf', [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="sales.pdf"',
+                ]);
+
+        // Retourner les ventes validées formatées en réponse JSON
+        return response()->json([
+            'sales' => $formattedSales,
+            'grandTotal' => $grandTotal, 
+        ]);
+
     }
+
+    // methode download facture
 
 
     public function getCountInvalidSale(): JsonResponse
@@ -377,9 +454,9 @@ class SaleController extends Controller
         // methode count Sales in progress
         public function countSalesInProgress(): JsonResponse
     { 
-        $count = Sale::where('stateSale', 'En cours')->count();  // Compter le nombre de ventes en cours
+        $count = Sale::where('stateSale', 'En cours')->count();  
 
-         $totalSalePayed = Sale::where('stateSale', 'En cours')->sum('salePayed');   // Calculer le total des montants payés pour les ventes en cours
+         $totalSalePayed = Sale::where('stateSale', 'En cours')->sum('salePayed');  
 
         return response()->json([ // Retourner la réponse avec le nombre de ventes en cours
             'count' => $count,
@@ -433,38 +510,35 @@ class SaleController extends Controller
         // Retourner les ventes en cours formatées en réponse JSON
         return response()->json([
             'sales' => $formattedSales,
-            'grandTotal' => $grandTotal, // Ajouter le montant total de tous les paniers
+            'grandTotal' => $grandTotal, 
         ]);
     }
 
         // supprimer panier en cours
-     
-            
-            public function deleteInProgressSale($id)
-    {
-        try {
-            $sale = Sale::findOrFail($id);
-
-            // Suppression des enregistrements associés dans product_sale
-            $sale->products()->delete(); // Assurez-vous que la relation `products` est définie dans le modèle Sale
-
+        public function clearCurrentCart(int $saleId): JsonResponse
+        {
+            // Trouver la vente en cours
+            $sale = Sale::find($saleId);
+    
+            if (!$sale) {
+                return response()->json([
+                    'error' => 'Vente non trouvée.'
+                ], 404);
+            }
+    
+            // Supprimer les détails associés à la vente
+            $sale->products()->detach();
+    
+            // Supprimer la vente elle-même
             $sale->delete();
-
+    
             return response()->json([
-                'success' => true,
-                'message' => 'Panier supprimé avec succès.'
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Une erreur est survenue lors de la suppression du panier.',
-                'error' => $e->getMessage()
-            ], 500);
+                'success' => 'Panier supprimé avec succès.'
+            ]);
         }
-    }
 
-        
-
+       
+     
     // Méthode pour calculer le montant d'un produit
     private function calculateProductAmount($product, $sale)
     {
@@ -473,5 +547,5 @@ class SaleController extends Controller
             ($product->pivot->priceSalePlaquette * $product->pivot->quantityPlaquette);
     }
 
-    
+
 }

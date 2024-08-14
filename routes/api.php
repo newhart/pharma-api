@@ -12,6 +12,8 @@ use App\Http\Controllers\SettingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
+
+
 // auth user
 Route::post('login', [\App\Http\Controllers\LoginUserController::class, 'login']);
 // logout  user
@@ -62,7 +64,10 @@ Route::get('/sales/last-mounth-sale', [SaleController::class, 'salesForLastMonth
 Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->middleware('auth:sanctum');
 Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress']);
 Route::get('/sales/in-progress', [SaleController::class, 'listInProgress']);
-Route::delete('/sales/in-progress/{id}', [SaleController::class, 'deleteInProgressSale']);
+Route::delete('/sales/{id}/clear', [SaleController::class, 'clearCurrentCart'])
+    ->name('sales.clear');
+
+
 
 
 
