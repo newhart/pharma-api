@@ -306,13 +306,19 @@ class SaleController extends Controller
 
         // Return the weekly sales as a JSON response
         return response()->json(['sales' => $weeklySales, 'max' => $maxSales]);
+    }   
+
+    // Ajouter cette méthode dans votre contrôleur
+private function imageToBase64($path)
+{
+    $imagePath = storage_path('app/public/' . $path); // Ajustez le chemin selon l'emplacement de stockage de vos images
+    if (!file_exists($imagePath)) {
+        return null;
     }
 
-        private function imageToBase64($path)
-    {
-        $image = Storage::disk('public')->get($path);
-        return 'data:image/' . pathinfo($path, PATHINFO_EXTENSION) . ';base64,' . base64_encode($image);
-    }
+    $imageData = file_get_contents($imagePath);
+    return base64_encode($imageData);
+}
 
 
         // Validation
@@ -380,18 +386,22 @@ class SaleController extends Controller
         $grandTotal = $formattedSales->sum('totalAmount');
 
 
-                // $logo = Logo::first(); 
-                // $logoBase64 = $logo ? $this->imageToBase64($logo->path) : null;
-                $setting = Setting::first();
-
+               
+                 $setting = Setting::first();
+                 $logoBase64 = null;
+                    
+                 
                 // Générer le PDF avec les données récupérées
-                        
+                if ($setting && $setting->logo) {
+                    $logoBase64 = $this->imageToBase64($setting->logo);
+                }
+
                 $pdf = Pdf::loadView('pdf.sales', [
                     'sales' => $formattedSales,
                     'grandTotal' => $grandTotal,
                     'setting' => $setting, 
-                    'currentDateTime' => now()->format('d/m/y H:i'),
-                    // 'logoBase64' => $logoBase64,
+                    'currentDateTime' => now()->format('d/m/y'),
+                    'logoBase64' => $logoBase64,
                 ]);
 
                 // Spécifier les en-têtes pour le téléchargement
@@ -408,7 +418,6 @@ class SaleController extends Controller
 
     }
 
-    // methode download facture
 
 
     public function getCountInvalidSale(): JsonResponse

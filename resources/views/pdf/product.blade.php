@@ -6,7 +6,7 @@
     <title>Liste produit</title>
     <style>
       body {
-        font-family: sans-serif;
+        font-faamily: sans-serif;
         margin: 0;
         padding: 0;
         position: relative;
@@ -72,7 +72,7 @@
       }
 
       th.designation {
-        width: 500px; 
+        width: 400px; 
       }
 
       table {
@@ -182,3 +182,5 @@
     </div>
 </body>
 </html>
+
+
