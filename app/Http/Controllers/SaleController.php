@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Setting;
 use App\Models\Logo;
-// use Barryvdh\DomPDF\Facade as PDF;
+use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SaleController extends Controller
@@ -43,7 +43,7 @@ class SaleController extends Controller
             $sale = Sale::create([
                 'saleDate' => now(),
                 'playmentDatePrevueAt' => now(),
-                'playmentMode' => 'espece',
+                'playmentMode' => $request->paymentMode ?? 'espece',
                 'estACredit' => 'test',
                 'saleAmout' => $request->total,
                 'salePayed' => $request->total,
@@ -85,7 +85,35 @@ class SaleController extends Controller
     }
 
 
-    private function convertToPercentage(array $data, $maxValue): array
+    public function addPaymentMode(Request $request, $saleId): JsonResponse
+    {
+        $request->validate([
+            'paymentMode' => 'required|string',
+        ]);
+
+        $sale = Sale::find($saleId);
+
+        if (!$sale) {
+            return response()->json([
+                'error' => 'Vente non trouvée.'
+            ], 404);
+        }
+
+        try {
+            $sale->playmentMode = $request->paymentMode;
+            $sale->save();
+
+            return response()->json(['success' => true, 'sale' => $sale]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de la mise à jour du mode de paiement.',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    private function convertToPercentagex(array $data, $maxValue): array
     {
         $transformFunction = function ($value) use ($maxValue) {
             return ($maxValue > 0) ? ($value / $maxValue) * 100 : 0;
@@ -308,18 +336,17 @@ class SaleController extends Controller
         return response()->json(['sales' => $weeklySales, 'max' => $maxSales]);
     }   
 
-    // Ajouter cette méthode dans votre contrôleur
-private function imageToBase64($path)
-{
-    $imagePath = storage_path('app/public/' . $path); // Ajustez le chemin selon l'emplacement de stockage de vos images
-    if (!file_exists($imagePath)) {
-        return null;
+        // Ajouter cette méthode dans votre contrôleur
+    private function imageToBase64($path)
+    {
+        $imagePath = storage_path('app/public/' . $path); // Ajustez le chemin selon l'emplacement de stockage de vos images
+        if (!file_exists($imagePath)) {
+            return null;
+        }
+
+        $imageData = file_get_contents($imagePath);
+        return base64_encode($imageData);
     }
-
-    $imageData = file_get_contents($imagePath);
-    return base64_encode($imageData);
-}
-
 
         // Validation
         public function checkValidation(Request $request)
@@ -380,12 +407,12 @@ private function imageToBase64($path)
                 'total' => $sale->saleAmout,
                 'remise' => $sale->remise,
                 'totalAmount' => $totalAmount,
+                'playmentMode' => $sale->playmentMode
             ];
         });
     
         $grandTotal = $formattedSales->sum('totalAmount');
-
-
+        
                
                  $setting = Setting::first();
                  $logoBase64 = null;
@@ -419,12 +446,13 @@ private function imageToBase64($path)
     }
 
 
-
+    
     public function getCountInvalidSale(): JsonResponse
     {
         $sale = Sale::where('stateSale', 'Annuler')->sum('SaleAmout');
         return response()->json(['sale' => $sale]);
     }
+
     public function getCaNow(): JsonResponse
     {
         $totalSalesAmount = Sale::whereDate('created_at', now())
@@ -512,6 +540,7 @@ private function imageToBase64($path)
                     'total' => $sale->saleAmout,
                     'remise' => $sale->remise,
                     'totalAmount' => $totalAmount,
+                    'playmentMode' => $sale->playmentMode
                 ];
         });
 

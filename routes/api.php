@@ -26,12 +26,12 @@ Route::resource('product', ProductController::class)->middleware('auth:sanctum')
 
 
 // pdf
-Route::get('/download-product-list', [PdfController::class, 'generateProductList']);
+Route::get('/download-product-list', [PdfController::class, 'generateProductList'])->middleware('auth:sanctum');
 
 
 // Mettre à jour le type et la couleur
 Route::post('/settings/color', [SettingController::class, 'updateColor'])->middleware('auth:sanctum');
-Route::get('/settings/colors', [SettingController::class, 'listSettings']);
+Route::get('/settings/colors', [SettingController::class, 'listSettings'])->middleware('auth:sanctum');
 
 
 // Supprimer le type et la couleur
@@ -40,7 +40,7 @@ Route::delete('/settings/color', [SettingController::class, 'deleteColor'])->mid
  // Mettre à jour le logo
 Route::post('/settings/logo', [SettingController::class, 'updateLogo'])->middleware('auth:sanctum');
 // routes/api.php
-Route::get('/settings/logos', [SettingController::class, 'listLogos']);
+Route::get('/settings/logos', [SettingController::class, 'listLogos'])->middleware('auth:sanctum');
 
 // Supprimer le logo
 Route::delete('/settings/logo', [SettingController::class, 'deleteLogo'])->middleware('auth:sanctum');
@@ -56,16 +56,24 @@ Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('a
 // create sale api ressource
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/sales/checked-validation', [SaleController::class, 'checkValidation'])->middleware('auth:sanctum');
-Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum');
+
+
+
+Route::post('/sales/{saleId}/payment-mode', [SaleController::class, 'addPaymentMode']);
+
+
+
+Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum')->middleware('auth:sanctum');
 Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
 Route::get('/sales/for-one-year', [SaleController::class, 'salesForOneYear'])->middleware('auth:sanctum');
 Route::get('/sales/ca-for-now', [SaleController::class, 'getCaNow'])->middleware('auth:sanctum');
 Route::get('/sales/last-mounth-sale', [SaleController::class, 'salesForLastMonth'])->middleware('auth:sanctum');
 Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->middleware('auth:sanctum');
-Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress']);
-Route::get('/sales/in-progress', [SaleController::class, 'listInProgress']);
+Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress'])->middleware('auth:sanctum');
+Route::get('/sales/in-progress', [SaleController::class, 'listInProgress'])->middleware('auth:sanctum');
 Route::delete('/sales/{id}/clear', [SaleController::class, 'clearCurrentCart'])
-    ->name('sales.clear');
+    ->name('sales.clear')
+    ->middleware('auth:sanctum');
 
 
 

@@ -21,7 +21,8 @@ class Sale extends Model
         'clientName',
         'description',
         'stateSale',
-        'remise', // Ajouté ici
+        'remise',
+        'invoice_number',
     ];
 
 

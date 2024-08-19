@@ -160,11 +160,15 @@
         
         <div class="margin-top">
             <table class="w-full">
-                <tr>
-                    <td class="w-half">
-                       Facture  N° : VNT-01
-                    </td>            
-                </tr>
+                @foreach ($sales as $sale)
+                    @foreach ($sale['cartProducts'] as $product)
+                        <tr>
+                            <td class="w-half">
+                                Facture  N° : VNT-  {{ $product['id'] }}
+                            </td>            
+                        </tr>
+                    @endforeach
+                @endforeach
             </table>
         </div>
 
@@ -174,6 +178,8 @@
                     <tr>
                         <td class="w-half">
                             {{ $product['name'] }}
+                           
+                          
                         </td>
                     </tr>
                 @endforeach
