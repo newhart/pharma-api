@@ -56,10 +56,12 @@ Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('a
 // create sale api ressource
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/sales/checked-validation', [SaleController::class, 'checkValidation'])->middleware('auth:sanctum');
+Route::post('/sales/payment-mode', [SaleController::class, 'addPaymentMode']);
 
 
 
-Route::post('/sales/{saleId}/payment-mode', [SaleController::class, 'addPaymentMode']);
+Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']);
+
 
 
 
@@ -71,6 +73,11 @@ Route::get('/sales/last-mounth-sale', [SaleController::class, 'salesForLastMonth
 Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->middleware('auth:sanctum');
 Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress'])->middleware('auth:sanctum');
 Route::get('/sales/in-progress', [SaleController::class, 'listInProgress'])->middleware('auth:sanctum');
+Route::get('/sales/ids-in-progress', [SaleController::class, 'getSalesIdsInProgress']);
+
+Route::post('/validate-sale-state', [SaleController::class, 'validateSaleState']);
+
+
 Route::delete('/sales/{id}/clear', [SaleController::class, 'clearCurrentCart'])
     ->name('sales.clear')
     ->middleware('auth:sanctum');

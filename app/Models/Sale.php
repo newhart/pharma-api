@@ -14,6 +14,7 @@ class Sale extends Model
         'saleDate',
         'saleAmout',
         'salePayed',
+        'amount_remaining',
         'saleStay',
         'estACredit',
         'playmentMode',

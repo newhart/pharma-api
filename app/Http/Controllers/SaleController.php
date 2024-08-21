@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SaleController extends Controller
+
 {
         public function store(SaleRequest $request): JsonResponse
     {
@@ -42,7 +43,7 @@ class SaleController extends Controller
         try {
             $sale = Sale::create([
                 'saleDate' => now(),
-                'playmentDatePrevueAt' => now(),
+                'playmentDatePrevueAt' => $request->playmentDatePrevueAt ?? now(),
                 'playmentMode' => $request->paymentMode ?? 'espece',
                 'estACredit' => 'test',
                 'saleAmout' => $request->total,
@@ -59,7 +60,7 @@ class SaleController extends Controller
             foreach ($request->cartProducts as $data) {
                 $product = Product::findOrFail($data['id']);
                 if ($product) {
-                    $this->additionalQuantityProduct($data, $product);
+                    // $this->additionalQuantityProduct($data, $product);
                     DB::table('product_sale')->insert([
                         'product_id' => $product->id,
                         'sale_id' => $sale->id,
@@ -85,32 +86,42 @@ class SaleController extends Controller
     }
 
 
-    public function addPaymentMode(Request $request, $saleId): JsonResponse
+        public function addPaymentMode(Request $request): JsonResponse
     {
+        // Validation de la requête
         $request->validate([
             'paymentMode' => 'required|string',
+            'saleIds' => 'required|array',
+            'saleIds.*' => 'integer|exists:sales,id', // Validation pour chaque ID
         ]);
 
-        $sale = Sale::find($saleId);
-
-        if (!$sale) {
-            return response()->json([
-                'error' => 'Vente non trouvée.'
-            ], 404);
-        }
+        $saleIds = $request->input('saleIds');
+        $paymentMode = $request->input('paymentMode');
 
         try {
-            $sale->playmentMode = $request->paymentMode;
-            $sale->save();
+            // Mettre à jour les ventes avec les IDs fournis
+            Sale::whereIn('id', $saleIds)->update([
+                'playmentMode' => $paymentMode,
+                'salePayed' => 0,
+            ]);
 
-            return response()->json(['success' => true, 'sale' => $sale]);
+            // Récupérer les ventes mises à jour pour la réponse
+            $updatedSales = Sale::whereIn('id', $saleIds)->get();
+
+            // Retourner la réponse JSON
+            return response()->json([
+                'success' => true,
+                'sales' => $updatedSales,
+            ]);
         } catch (\Exception $e) {
+            // Retourner une réponse d'erreur en cas d'exception
             return response()->json([
                 'error' => 'Une erreur est survenue lors de la mise à jour du mode de paiement.',
                 'message' => $e->getMessage()
             ], 500);
         }
     }
+
 
 
     private function convertToPercentagex(array $data, $maxValue): array
@@ -377,6 +388,17 @@ class SaleController extends Controller
             $sale->save();
         }
 
+            // Mettre à jour les quantités des produits après validation
+        foreach ($finalizedSales as $sale) {
+            foreach ($sale->products as $product) {
+                $this->updateProductQuantities([
+                    'quantityBoite' => $product->pivot->quantityBoite,
+                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                    'quantityGellule' => $product->pivot->quantityGellule,
+                ], $product);
+            }
+        }
+
         $formattedSales = collect($finalizedSales)->map(function ($sale) {
             // Formater les montants de la vente
             $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
@@ -501,6 +523,7 @@ class SaleController extends Controller
         ]);
     }
 
+    // methode qui recupere les vente en cours
         public function listInProgress(): JsonResponse
     {
         // Récupérer toutes les ventes avec le statut 'En cours' et inclure les produits associés
@@ -552,6 +575,20 @@ class SaleController extends Controller
         ]);
     }
 
+     // methode qui recupere les ids de vente en cours
+        public function getSalesIdsInProgress(): JsonResponse
+    {
+       
+        $salesInProgress = Sale::where('stateSale', 'En cours')
+            ->pluck('id'); 
+
+        
+        return response()->json([
+            'salesIds' => $salesInProgress,
+        ]);
+    }
+
+
         // supprimer panier en cours
         public function clearCurrentCart(int $saleId): JsonResponse
         {
@@ -584,6 +621,160 @@ class SaleController extends Controller
             ($product->pivot->priceSaleGellule * $product->pivot->quantityGellule) +
             ($product->pivot->priceSalePlaquette * $product->pivot->quantityPlaquette);
     }
+
+
+    public function updateSaleDetails(Request $request): JsonResponse
+    {
+        $request->validate([
+            'saleIds' => 'required|array',
+            'saleIds.*' => 'integer|exists:sales,id',
+            'salePayed' => 'required|numeric',
+            'playmentDatePrevueAt' => 'nullable|date',
+            'clientName' => 'nullable|string',
+            'description' => 'nullable|string',
+        ]);
+
+        $saleIds = $request->input('saleIds');
+        $salePayed = $request->input('salePayed');
+        $playmentDatePrevueAt = $request->input('playmentDatePrevueAt');
+        $clientName = $request->input('clientName');
+        $description = $request->input('description');
+
+        $sales = Sale::whereIn('id', $saleIds)->get();
+
+        if ($sales->isEmpty()) {
+            return response()->json([
+                'error' => 'Aucune vente trouvée pour les IDs spécifiés.'
+            ], 404);
+        }
+
+        try {
+            foreach ($sales as $sale) {
+                // Mise à jour des propriétés de la vente
+                $sale->salePayed = $salePayed;
+                $sale->playmentDatePrevueAt = $playmentDatePrevueAt ?? $sale->playmentDatePrevueAt;
+                $sale->clientName = $clientName;
+                $sale->description = $description;
+
+                // Calculer le montant restant
+                $sale->amount_remaining = $sale->saleAmout - $sale->salePayed;
+                
+
+                // Calculer les jours restants
+                if ($sale->playmentDatePrevueAt) {
+                    $playmentDatePrevueAt = Carbon::parse($sale->playmentDatePrevueAt);
+                    $saleDate = Carbon::parse($sale->saleDate);
+                    $sale->saleStay = $playmentDatePrevueAt->diffInDays($saleDate);
+                } else {
+                    $sale->saleStay = 0;
+                }
+
+                // Mettre à jour l'état de la vente
+                if ($sale->amount_remaining > 0) {
+                    $sale->stateSale = 'En cours';
+                } else {
+                    $sale->stateSale = 'Paid';
+                }
+
+                $sale->save();
+            }
+
+            // Récupérer toutes les ventes en cours
+            $salesInProgress = Sale::where('stateSale', 'En cours')->get();
+
+            // Calculer le grand total
+            $grandTotal = $salesInProgress->sum('saleAmout');
+             // Calculer le montant restant
+             $amountRemaining = $grandTotal - $salePayed;
+
+            // Récupérer les IDs des ventes en cours
+            $idsInProgress = $salesInProgress->pluck('id')->toArray();
+
+            
+
+            return response()->json([
+                'success' => true,
+                'sales' => $sales->map(function ($sale) {
+                    return [
+                        'id' => $sale->id,
+                        'saleDate' => $sale->saleDate,
+                        'saleAmout' => $sale->saleAmout,
+                        'salePayed' => $sale->salePayed,
+                        'saleStay' => $sale->saleStay,
+                        'estACredit' => $sale->estACredit,
+                        'playmentMode' => $sale->playmentMode,
+                        'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+                        'clientName' => $sale->clientName,
+                        'description' => $sale->description,
+                        'stateSale' => $sale->stateSale,
+                        'remise' => $sale->remise,
+                        'created_at' => $sale->created_at,
+                        'updated_at' => $sale->updated_at,
+                        'user_id' => $sale->user_id,
+                        'invoice_number' => $sale->invoice_number,
+                        'amount_remaining' => $sale->saleAmout - $sale->salePayed
+                    ];
+                }),
+                'allSaleIds' => $idsInProgress, // Afficher tous les IDs des ventes en cours
+                'grandTotal' => $grandTotal,
+                'amount_remaining' => $amountRemaining,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de la mise à jour des détails des ventes.',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    
+    
+
+
+    
+        public function validateSaleState(Request $request)
+    {
+        // Valider la requête
+        $validatedData = $request->validate([
+            'sale_ids' => 'required|array',
+            'sale_ids.*' => 'integer|exists:sales,id',
+            'stay' => 'required|numeric'
+        ]);
+
+        // Récupérer les ventes par ID
+        $sales = Sale::whereIn('id', $validatedData['sale_ids'])->get();
+
+        foreach ($sales as $sale) {
+            // Mettre à jour le stateSale à "Validée"
+            $sale->stateSale = 'Validée';
+            $sale->save();
+
+            // Mettre à jour les quantités des produits
+            foreach ($sale->products as $product) {
+                $this->updateProductQuantities([
+                    'quantityBoite' => $product->pivot->quantityBoite,
+                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                    'quantityGellule' => $product->pivot->quantityGellule,
+                ], $product);
+            }
+        }
+
+        // Générer le PDF
+        $pdf = \PDF::loadView('pdf.sales_report', ['sales' => $sales, 'stay' => $validatedData['stay']]);
+
+        // Retourner le PDF en réponse
+        return response()->stream(
+            function () use ($pdf) {
+                $pdf->output();
+            },
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="sales_report.pdf"',
+            ]
+        );
+    }
+
 
 
 }
