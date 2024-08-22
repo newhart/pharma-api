@@ -62,6 +62,7 @@ Route::post('/sales/payment-mode', [SaleController::class, 'addPaymentMode']);
 
 Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']);
 
+Route::post('/sales/download-report', [SaleController::class, 'downloadSalesReport']);
 
 
 
@@ -76,6 +77,8 @@ Route::get('/sales/in-progress', [SaleController::class, 'listInProgress'])->mid
 Route::get('/sales/ids-in-progress', [SaleController::class, 'getSalesIdsInProgress']);
 
 Route::post('/validate-sale-state', [SaleController::class, 'validateSaleState']);
+
+Route::delete('/sales/delete', [SaleController::class, 'deleteSales']);
 
 
 Route::delete('/sales/{id}/clear', [SaleController::class, 'clearCurrentCart'])

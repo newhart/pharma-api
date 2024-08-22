@@ -615,7 +615,7 @@ class SaleController extends Controller
        
      
     // Méthode pour calculer le montant d'un produit
-    private function calculateProductAmount($product, $sale)
+        private function calculateProductAmount($product, $sale)
     {
         return ($product->pivot->priceSaleBoite * $product->pivot->quantityBoite) +
             ($product->pivot->priceSaleGellule * $product->pivot->quantityGellule) +
@@ -623,7 +623,7 @@ class SaleController extends Controller
     }
 
 
-    public function updateSaleDetails(Request $request): JsonResponse
+        public function updateSaleDetails(Request $request): JsonResponse
     {
         $request->validate([
             'saleIds' => 'required|array',
@@ -671,12 +671,20 @@ class SaleController extends Controller
 
                 // Mettre à jour l'état de la vente
                 if ($sale->amount_remaining > 0) {
-                    $sale->stateSale = 'En cours';
+                    $sale->stateSale = 'Non validée';
                 } else {
                     $sale->stateSale = 'Paid';
                 }
-
                 $sale->save();
+
+                 // Mettre à jour les quantités des produits
+                foreach ($sale->products as $product) {
+                $this->updateProductQuantities([
+                    'quantityBoite' => $product->pivot->quantityBoite,
+                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                    'quantityGellule' => $product->pivot->quantityGellule,
+                ], $product);
+            }
             }
 
             // Récupérer toutes les ventes en cours
@@ -728,10 +736,6 @@ class SaleController extends Controller
     }
 
     
-    
-
-
-    
         public function validateSaleState(Request $request)
     {
         // Valider la requête
@@ -749,31 +753,75 @@ class SaleController extends Controller
             $sale->stateSale = 'Validée';
             $sale->save();
 
-            // Mettre à jour les quantités des produits
-            foreach ($sale->products as $product) {
-                $this->updateProductQuantities([
-                    'quantityBoite' => $product->pivot->quantityBoite,
-                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
-                    'quantityGellule' => $product->pivot->quantityGellule,
-                ], $product);
-            }
         }
 
-        // Générer le PDF
-        $pdf = \PDF::loadView('pdf.sales_report', ['sales' => $sales, 'stay' => $validatedData['stay']]);
+            // Retourner un message de succès
+        return response()->json([
+            'message' => 'Les ventes ont été validées avec succès.'
+        ], 200);
 
-        // Retourner le PDF en réponse
-        return response()->stream(
-            function () use ($pdf) {
-                $pdf->output();
-            },
-            200,
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="sales_report.pdf"',
-            ]
-        );
     }
+
+
+    // doanload
+    public function downloadSalesReport(Request $request)
+{
+    // Valider la requête
+    $validatedData = $request->validate([
+        'sale_ids' => 'required|array',
+        'sale_ids.*' => 'integer|exists:sales,id'
+    ]);
+
+    // Récupérer les ventes par ID
+    $sales = Sale::whereIn('id', $validatedData['sale_ids'])->get();
+
+    // Générer le PDF
+    $pdf = \PDF::loadView('pdf.sales_report', ['sales' => $sales]);
+
+    // Retourner le PDF en réponse
+    return response()->stream(
+        function () use ($pdf) {
+            $pdf->output();
+        },
+        200,
+        [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="sales_report.pdf"',
+        ]
+    );
+}
+
+   
+
+
+        public function deleteSales(Request $request): JsonResponse
+    {
+        // Valider les données de la requête avec le nom de champ 'saleIds'
+        $validatedData = $request->validate([
+            'saleIds' => 'required|array',
+            'saleIds.*' => 'integer|exists:sales,id',
+        ]);
+    
+        // Récupérer les ventes par ID
+        $sales = Sale::whereIn('id', $validatedData['saleIds'])->get();
+    
+        if ($sales->isEmpty()) {
+            return response()->json([
+                'error' => 'Aucune vente trouvée.'
+            ], 404);
+        }
+    
+        // Supprimer les détails associés à chaque vente et les ventes elles-mêmes
+        foreach ($sales as $sale) {
+            $sale->products()->detach();
+            $sale->delete();
+        }
+    
+        return response()->json([
+            'success' => 'Les ventes ont été supprimées avec succès.'
+        ]);
+    }
+    
 
 
 
