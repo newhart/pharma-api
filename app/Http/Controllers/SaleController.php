@@ -14,6 +14,11 @@ use App\Models\Setting;
 use App\Models\Logo;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\View;
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+
 
 class SaleController extends Controller
 
@@ -362,33 +367,25 @@ class SaleController extends Controller
         // Validation
         public function checkValidation(Request $request)
     {
-        // Obtenir la liste des IDs de ventes depuis la requête
         $saleIds = $request->input('sale_ids');
-        // Valider que la liste des IDs est bien fournie
         if (!is_array($saleIds) || empty($saleIds)) {
             return response()->json(['success' => false, 'message' => 'No sales IDs provided'], 400);
         }
-
-        // Récupérer toutes les ventes avec les IDs fournis
         $sales = Sale::whereIn('id', $saleIds)->get();
 
-         // Initialiser un tableau pour stocker les ventes finalisées
         $finalizedSales = [];
 
-        // Mettre à jour chaque vente
         foreach ($sales as $sale) {
             $stay = $request->input('stay'); 
             $sale->saleStay = $sale->saleStay - (float) $stay;
 
-            // Vérifier si la vente est maintenant validée
+        
             if ($sale->saleStay <= 0.0) {
                 $sale->stateSale = 'Valider';
                 $finalizedSales[] = $sale; 
             }
             $sale->save();
-        }
-
-            // Mettre à jour les quantités des produits après validation
+        }        
         foreach ($finalizedSales as $sale) {
             foreach ($sale->products as $product) {
                 $this->updateProductQuantities([
@@ -400,12 +397,12 @@ class SaleController extends Controller
         }
 
         $formattedSales = collect($finalizedSales)->map(function ($sale) {
-            // Formater les montants de la vente
+            
             $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
             $sale->salePayed = PriceService::formatPrice($sale->salePayed);
             $sale->saleStay = PriceService::formatPrice($sale->saleStay);
             
-            // Construire la structure du panier
+           
             $cartProducts = $sale->products->map(function ($product) use ($sale) {
                 return [
                     'sale_id' => $sale->id,
@@ -421,7 +418,7 @@ class SaleController extends Controller
                 ];
             });
     
-            // Calculer le montant total de la vente
+            
             $totalAmount = $cartProducts->sum('montant');
     
             return [
@@ -440,7 +437,7 @@ class SaleController extends Controller
                  $logoBase64 = null;
                     
                  
-                // Générer le PDF avec les données récupérées
+              
                 if ($setting && $setting->logo) {
                     $logoBase64 = $this->imageToBase64($setting->logo);
                 }
@@ -453,20 +450,19 @@ class SaleController extends Controller
                     'logoBase64' => $logoBase64,
                 ]);
 
-                // Spécifier les en-têtes pour le téléchargement
+               
                 return $pdf->download('sales.pdf', [
                     'Content-Type' => 'application/pdf',
                     'Content-Disposition' => 'attachment; filename="sales.pdf"',
                 ]);
 
-        // Retourner les ventes validées formatées en réponse JSON
+        
         return response()->json([
             'sales' => $formattedSales,
             'grandTotal' => $grandTotal, 
         ]);
 
     }
-
 
     
     public function getCountInvalidSale(): JsonResponse
@@ -526,21 +522,22 @@ class SaleController extends Controller
     // methode qui recupere les vente en cours
         public function listInProgress(): JsonResponse
     {
-        // Récupérer toutes les ventes avec le statut 'En cours' et inclure les produits associés
+       
         $salesInProgress = Sale::where('stateSale', 'En cours')
-            ->with('products') // Charger les produits associés
+            ->with('products')
             ->get();
 
-        // Formater les ventes et les produits
+    
         $formattedSales = $salesInProgress->map(function ($sale) {
-            // Formater les montants de la vente
+            
             $sale->saleAmout = PriceService::formatPrice($sale->saleAmout);
             $sale->salePayed = PriceService::formatPrice($sale->salePayed);
             $sale->saleStay = PriceService::formatPrice($sale->saleStay);
             
-            // Construire la structure du panier
+           
             $cartProducts = $sale->products->map(function ($product) use ($sale) {
                 return [
+                    // 'id_product_sale' => $pro,
                     'sale_id' => $sale->id , 
                     'id' => $product->id,
                     'name' => $product->name,
@@ -554,7 +551,7 @@ class SaleController extends Controller
                 ];
             });
 
-             // Calculer le montant total de la vente
+           
             $totalAmount = $cartProducts->sum('montant');
 
                 return [
@@ -568,7 +565,7 @@ class SaleController extends Controller
         });
 
         $grandTotal = $formattedSales->sum('totalAmount');
-        // Retourner les ventes en cours formatées en réponse JSON
+    
         return response()->json([
             'sales' => $formattedSales,
             'grandTotal' => $grandTotal, 
@@ -735,6 +732,146 @@ class SaleController extends Controller
         }
     }
 
+        // listes des ventes a credit
+        public function getPendingSales(): JsonResponse
+    {
+        try {
+            // Récupérer toutes les ventes avec l'état 'Non validée'
+            $pendingSales = Sale::where('stateSale', 'Non validée')
+                                ->with('products')
+                                ->get();
+
+            if ($pendingSales->isEmpty()) {
+                return response()->json([
+                    'message' => 'Aucune vente non validée trouvée.'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'pendingSales' => $pendingSales->map(function ($sale) {
+                // Vérifier si la date prévue est dépassée
+                $playmentDatePrevueAt = \Carbon\Carbon::parse($sale->playmentDatePrevueAt);
+                $currentDate = \Carbon\Carbon::now();
+
+                $stateSale = $currentDate->greaterThan($playmentDatePrevueAt) ? 'Date dépassée' : $sale->stateSale;
+
+                    return [
+                        'id' => $sale->id,
+                        'reference' => 'VNT-' . $sale->id,
+                        'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'), 
+                        'saleAmout' => $sale->saleAmout,
+                        'salePayed' => $sale->salePayed,
+                        'saleStay' => $sale->saleStay,
+                        'estACredit' => $sale->estACredit,
+                        'playmentMode' => $sale->playmentMode,
+                        'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+                        'clientName' => $sale->clientName,
+                        'description' => $sale->description,
+                        'stateSale' => $sale->stateSale,
+                        'remise' => $sale->remise,
+                        'created_at' => $sale->created_at->format('d-m-Y H:i:s'),
+                        'updated_at' => $sale->updated_at->format('d/m/Y'),
+                        'time' => $sale->updated_at->format('H:i'),
+                        'user_id' => $sale->user_id,
+                        'invoice_number' => $sale->invoice_number,
+                        'amount_remaining' => $sale->saleAmout - $sale->salePayed,
+                        'products' => $sale->products->map(function ($product) {
+                        return [
+                            'product_id' => $product->id,
+                            'name' => $product->name,
+                            'quantityGellule' => $product->pivot->quantityGellule,
+                            'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                            'quantityBoite' => $product->pivot->quantityBoite,
+                            'priceSaleGellule' => $product->pivot->priceSaleGellule,
+                            'priceSalePlaquette' => $product->pivot->priceSalePlaquette,
+                            'priceSaleBoite' => $product->pivot->priceSaleBoite,
+                            'amount' => $product->pivot->amount,
+                            'user' => $product->pivot->user,
+                        ];
+                    })
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de la récupération des ventes non validées.',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }   
+
+
+        public function updatePayment(Request $request): JsonResponse
+    {
+        try {
+            // Récupérer les IDs des ventes à mettre à jour
+            $saleIds = $request->input('sale_ids');
+            if (!is_array($saleIds) || empty($saleIds)) {
+                return response()->json(['success' => false, 'message' => 'No sales IDs provided'], 400);
+            }
+
+            // Récupérer les ventes par leurs IDs
+            $sales = Sale::whereIn('id', $saleIds)->get();
+            $finalizedSales = [];
+
+            foreach ($sales as $sale) {
+                // Mettre à jour le montant payé pour chaque vente
+                $salePayed = $request->input('salePayed');
+                $sale->salePayed += (float) $salePayed;
+
+                // Recalculer le reste à payer
+                $sale->saleStay = $sale->saleAmout - $sale->salePayed;
+
+                // Si le reste à payer est 0 ou moins, valider la vente
+                if ($sale->saleStay <= 0.0) {
+                    $sale->saleStay = 0;
+                    $sale->stateSale = 'Valider';
+                    $finalizedSales[] = $sale;
+                }
+
+                // Sauvegarder les modifications
+                $sale->save();
+            }
+
+            // Optionnel : Exécuter des actions supplémentaires pour les ventes validées
+            foreach ($finalizedSales as $sale) {
+                // Exemple : mise à jour des quantités de produits
+                foreach ($sale->products as $product) {
+                    $this->updateProductQuantities([
+                        'quantityBoite' => $product->pivot->quantityBoite,
+                        'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                        'quantityGellule' => $product->pivot->quantityGellule,
+                    ], $product);
+                }
+            }
+
+            // Préparer la réponse avec les ventes mises à jour
+            $formattedSales = collect($finalizedSales)->map(function ($sale) {
+                return [
+                    'id' => $sale->id,
+                    'saleAmout' => $sale->saleAmout,
+                    'salePayed' => $sale->salePayed,
+                    'saleStay' => $sale->saleStay,
+                    'stateSale' => $sale->stateSale,
+                    'playmentMode' => $sale->playmentMode,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paiements mis à jour avec succès.',
+                'sales' => $formattedSales
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de la mise à jour des paiements.',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     
         public function validateSaleState(Request $request)
     {
@@ -755,7 +892,7 @@ class SaleController extends Controller
 
         }
 
-            // Retourner un message de succès
+        // Retourner un message de succès
         return response()->json([
             'message' => 'Les ventes ont été validées avec succès.'
         ], 200);
@@ -763,35 +900,33 @@ class SaleController extends Controller
     }
 
 
-    // doanload
-    public function downloadSalesReport(Request $request)
-{
-    // Valider la requête
-    $validatedData = $request->validate([
-        'sale_ids' => 'required|array',
-        'sale_ids.*' => 'integer|exists:sales,id'
-    ]);
+        // doanload
+        public function downloadSalesReport(Request $request)
+    {
+        // Valider la requête
+        $validatedData = $request->validate([
+            'sale_ids' => 'required|array',
+            'sale_ids.*' => 'integer|exists:sales,id'
+        ]);
 
-    // Récupérer les ventes par ID
-    $sales = Sale::whereIn('id', $validatedData['sale_ids'])->get();
+        // Récupérer les ventes par ID
+        $sales = Sale::whereIn('id', $validatedData['sale_ids'])->get();
 
-    // Générer le PDF
-    $pdf = \PDF::loadView('pdf.sales_report', ['sales' => $sales]);
+        // Générer le PDF
+        $pdf = \PDF::loadView('pdf.sales_report', ['sales' => $sales]);
 
-    // Retourner le PDF en réponse
-    return response()->stream(
-        function () use ($pdf) {
-            $pdf->output();
-        },
-        200,
-        [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="sales_report.pdf"',
-        ]
-    );
-}
-
-   
+        // Retourner le PDF en reponse
+        return response()->stream(
+            function () use ($pdf) {
+                $pdf->output();
+            },
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="sales_report.pdf"',
+            ]
+        );
+    }
 
 
         public function deleteSales(Request $request): JsonResponse
@@ -821,8 +956,114 @@ class SaleController extends Controller
             'success' => 'Les ventes ont été supprimées avec succès.'
         ]);
     }
+
+    public function downloadPendingSalesPdf()
+    {
+        // Récupérer les ventes en attente
+        $sales = Sale::where('stateSale', 'Non validée')
+                    ->with('products')
+                    ->get();
+    
+        if ($sales->isEmpty()) {
+            // Si aucune vente en attente
+            return response()->json([
+                'message' => 'Aucune vente en attente.'
+            ], 404);
+        }
+    
+        // Préparer les données pour la vue
+        $data = $sales->map(function ($sale) {
+            return [
+                'id' => $sale->id,
+                'reference' => 'VNT-' . $sale->id,
+                'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'),
+                'saleAmout' => $sale->saleAmout,
+                'salePayed' => $sale->salePayed,
+                'amount_remaining' => $sale->saleAmout - $sale->salePayed,
+                'estACredit' => $sale->estACredit,
+                'playmentMode' => $sale->playmentMode,
+                'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+                'clientName' => $sale->clientName,
+                'description' => $sale->description,
+                'stateSale' => $sale->stateSale,
+                'remise' => $sale->remise,
+                'created_at' => $sale->created_at->format('d/m/Y H:i:s'),
+                'updated_at' => $sale->updated_at->format('d/m/Y'),
+                'time' => $sale->updated_at->format('H:i'),
+                'user_id' => $sale->user_id,
+                'invoice_number' => $sale->invoice_number,
+                'products' => $sale->products->map(function ($product) {
+                    return [
+                        'product_id' => $product->id,
+                        'name' => $product->name,
+                        'quantityGellule' => $product->pivot->quantityGellule,
+                        'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                        'quantityBoite' => $product->pivot->quantityBoite,
+                        'priceSaleGellule' => $product->pivot->priceSaleGellule,
+                        'priceSalePlaquette' => $product->pivot->priceSalePlaquette,
+                        'priceSaleBoite' => $product->pivot->priceSaleBoite,
+                        'amount' => $product->pivot->amount,
+                        'user' => $product->pivot->user,
+                    ];
+                })
+            ];
+        });
+
+
+         // heur madagascar
+        $now = Carbon::now('Indian/Antananarivo');
+
+         // date actuelle
+        $dateToday = Carbon::now()->format('d/m/Y');
+    
+            // Récupérer le logo en base64
+        $setting = Setting::first();
+        $logoBase64 = null;
+        $nomEntreprise = $setting ? $setting->nomEntreprise : 'Nom Entreprise';
+        $nif = $setting ? $setting->nif : '';
+        $stat = $setting ? $setting->stat : '';
+        $mail = $setting ? $setting->mail : '';
+        $tel = $setting ? $setting->tel : '';
+
+        if ($setting && $setting->logo) {
+            $logoBase64 = $this->imageToBase64($setting->logo);
+        }
+
+        // Charger la vue Blade avec les données
+        $pdfView = View::make('pending_sales_pdf', [
+            'sales' => $data,
+            'logoBase64' => $logoBase64,
+            'dateToday' => $dateToday,
+            'now' => $now,
+            'logoBase64' => $logoBase64,
+            'nomEntreprise' => $nomEntreprise,
+            'nif' => $nif,
+            'stat' => $stat,
+            'mail' => $mail,
+            'tel' => $tel,
+        ])->render();
+
+
+        // Configurer dompdf
+        $options = new Options();
+        $options->set('defaultFont', 'Arial');
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isPhpEnabled', true);
+        $options->set('isBase64ImageEnabled', true);
+    
+        // Initialiser Dompdf avec les options
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($pdfView);
+        $dompdf->setPaper('A4', 'portrait');
+    
+        // Rendre le PDF
+        $dompdf->render();
+    
+        // Télécharger le PDF
+        return $dompdf->stream('pending_sales.pdf', ['Attachment' => true]);
+    }
     
 
-
-
 }
+
+

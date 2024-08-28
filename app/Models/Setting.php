@@ -15,7 +15,6 @@ class Setting extends Model
         'type',
         'user_id',
         'color',
-       
         'nomEntreprise',
         'nif',
         'stat',

@@ -32,7 +32,7 @@
       .logo-section {
         position: absolute; /* Permet au logo de rester en haut à gauche */
         top: 0px;
-        left: 0px;
+        left: 10px;
         max-width: 150px;
         text-align: center;
       }

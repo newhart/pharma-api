@@ -29,7 +29,7 @@ Route::resource('product', ProductController::class)->middleware('auth:sanctum')
 Route::get('/download-product-list', [PdfController::class, 'generateProductList'])->middleware('auth:sanctum');
 
 
-// Mettre à jour le type et la couleur
+// Mettre a jour le type et la couleur
 Route::post('/settings/color', [SettingController::class, 'updateColor'])->middleware('auth:sanctum');
 Route::get('/settings/colors', [SettingController::class, 'listSettings'])->middleware('auth:sanctum');
 
@@ -60,9 +60,6 @@ Route::post('/sales/payment-mode', [SaleController::class, 'addPaymentMode']);
 
 
 
-Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']);
-
-Route::post('/sales/download-report', [SaleController::class, 'downloadSalesReport']);
 
 
 
@@ -75,6 +72,13 @@ Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->mi
 Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress'])->middleware('auth:sanctum');
 Route::get('/sales/in-progress', [SaleController::class, 'listInProgress'])->middleware('auth:sanctum');
 Route::get('/sales/ids-in-progress', [SaleController::class, 'getSalesIdsInProgress']);
+Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']);
+Route::get('/sales/pending', [SaleController::class, 'getPendingSales']);
+Route::put('/sales/update-payment', [SaleController::class, 'updatePayment']);
+Route::get('/pending-sales/pdf', [SaleController::class, 'downloadPendingSalesPdf']);
+
+
+Route::post('/sales/download-report', [SaleController::class, 'downloadSalesReport']);
 
 Route::post('/validate-sale-state', [SaleController::class, 'validateSaleState']);
 

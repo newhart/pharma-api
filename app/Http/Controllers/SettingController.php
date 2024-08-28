@@ -71,7 +71,7 @@ class SettingController extends Controller
             'tel' => 'nullable|string'
         ]);
 
-        $setting = Setting::first(); // Supposer qu'il y a un seul enregistrement de paramètres
+        $setting = Setting::first(); 
 
         if ($request->hasFile('logo')) {
             // Supprimer l'ancien logo s'il existe

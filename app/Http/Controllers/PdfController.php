@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Product;
-use App\Models\Setting; // Assurez-vous d'importer le modèle Setting
+use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;         
 
