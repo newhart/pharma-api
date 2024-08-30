@@ -76,6 +76,7 @@ Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']
 Route::get('/sales/pending', [SaleController::class, 'getPendingSales']);
 Route::put('/sales/update-payment', [SaleController::class, 'updatePayment']);
 Route::get('/pending-sales/pdf', [SaleController::class, 'downloadPendingSalesPdf']);
+Route::get('/sale/{id}/pdf', [SaleController::class, 'downloadSaleDetailPdf']);
 
 
 Route::post('/sales/download-report', [SaleController::class, 'downloadSalesReport']);

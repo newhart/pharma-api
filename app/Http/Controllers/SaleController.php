@@ -1059,10 +1059,117 @@ class SaleController extends Controller
         // Rendre le PDF
         $dompdf->render();
     
-        // Télécharger le PDF
-        return $dompdf->stream('pending_sales.pdf', ['Attachment' => true]);
+        // Télécharger le PDF avec en-têtes CORS
+    return response($dompdf->output(), 200)
+    ->header('Content-Type', 'application/pdf')
+    ->header('Content-Disposition', 'attachment; filename="pending_sales.pdf"')
+    ->header('Access-Control-Allow-Origin', '*')
+    ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');
     }
-    
+        
+        public function downloadSaleDetailPdf($id)
+    {
+        // Récupérer la vente spécifique
+        $sale = Sale::where('id', $id)
+                    ->with('products')
+                    ->first();
+
+        if (!$sale) {
+            return response()->json(['message' => 'Vente non trouvée.'], 404);
+        }
+
+        // Préparer les données pour la vue
+        $data = [
+            'id' => $sale->id,
+            'reference' => 'VNT-' . $sale->id,
+            'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'),
+            'saleAmout' => $sale->saleAmout,
+            'salePayed' => $sale->salePayed,
+            'amount_remaining' => $sale->saleAmout - $sale->salePayed,
+            'estACredit' => $sale->estACredit,
+            'playmentMode' => $sale->playmentMode,
+            'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+            'clientName' => $sale->clientName,
+            'description' => $sale->description,
+            'stateSale' => $sale->stateSale,
+            'remise' => $sale->remise,
+            'created_at' => $sale->created_at->format('d/m/Y H:i:s'),
+            'updated_at' => $sale->updated_at->format('d/m/Y'),
+            'time' => $sale->updated_at->format('H:i'),
+            'user_id' => $sale->user_id,
+            'invoice_number' => $sale->invoice_number,
+            'products' => $sale->products->map(function ($product) {
+                return [
+                    'product_id' => $product->id,
+                    'name' => $product->name,
+                    'quantityGellule' => $product->pivot->quantityGellule,
+                    'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                    'quantityBoite' => $product->pivot->quantityBoite,
+                    'priceSaleGellule' => $product->pivot->priceSaleGellule,
+                    'priceSalePlaquette' => $product->pivot->priceSalePlaquette,
+                    'priceSaleBoite' => $product->pivot->priceSaleBoite,
+                    'amount' => $product->pivot->amount,
+                    'user' => $product->pivot->user,
+                ];
+            })
+        ];
+
+        // Heure actuelle à Madagascar
+        $now = Carbon::now('Indian/Antananarivo');
+
+        // Date actuelle
+        $dateToday = Carbon::now()->format('d/m/Y');
+
+        // Récupérer les paramètres de l'entreprise
+        $setting = Setting::first();
+        $logoBase64 = null;
+        $nomEntreprise = $setting ? $setting->nomEntreprise : 'Nom Entreprise';
+        $nif = $setting ? $setting->nif : '';
+        $stat = $setting ? $setting->stat : '';
+        $mail = $setting ? $setting->mail : '';
+        $tel = $setting ? $setting->tel : '';
+
+        if ($setting && $setting->logo) {
+            $logoBase64 = $this->imageToBase64($setting->logo);
+        }
+
+        // Charger la vue Blade avec les données
+        $pdfView = View::make('sale_detail_pdf', [
+            'sale' => $data,
+            'logoBase64' => $logoBase64,
+            'dateToday' => $dateToday,
+            'now' => $now,
+            'nomEntreprise' => $nomEntreprise,
+            'nif' => $nif,
+            'stat' => $stat,
+            'mail' => $mail,
+            'tel' => $tel,
+        ])->render();
+
+        // Configurer Dompdf
+        $options = new Options();
+        $options->set('defaultFont', 'Arial');
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isPhpEnabled', true);
+        $options->set('isBase64ImageEnabled', true);
+
+        // Initialiser Dompdf avec les options
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($pdfView);
+        $dompdf->setPaper('A4', 'portrait');
+
+        // Rendre le PDF
+        $dompdf->render();
+
+        // Télécharger le PDF avec les en-têtes CORS
+        return response($dompdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="sale_detail.pdf"')
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');
+    }
 
 }
 
