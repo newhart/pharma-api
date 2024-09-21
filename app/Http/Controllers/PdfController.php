@@ -20,10 +20,9 @@ class PdfController extends Controller
 
     public function generateProductList(Request $request)
     {
-        // Récupérer toutes les données des produits
+    
         $products = Product::all();
 
-        // Calculer le nombre total de produits
         $totalProducts = $products->count();
 
         // heur madagascar
@@ -60,7 +59,5 @@ class PdfController extends Controller
         ]);
 
         return $pdf->download('product_list.pdf');
-    }
-
-    
+    }   
 }

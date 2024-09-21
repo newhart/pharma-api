@@ -10,6 +10,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Sale extends Model
 {
     use HasFactory;
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($sale) {
+            $latestSale = Sale::latest('id')->first();
+            $sale->invoice_number = $latestSale ? $latestSale->invoice_number + 1 : 1;
+        });
+    }
+
+
     protected $fillable = [
         'saleDate',
         'saleAmout',
@@ -24,6 +36,7 @@ class Sale extends Model
         'stateSale',
         'remise',
         'invoice_number',
+        'user_id',
     ];
 
 

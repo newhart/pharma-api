@@ -9,6 +9,5 @@ class Logo extends Model
 {
     use HasFactory;
 
-    // Spécifiez les attributs qui peuvent être remplis en masse
-    protected $fillable = ['path']; // Ajustez les attributs en fonction de votre besoin
+    protected $fillable = ['path']; 
 }

@@ -12,10 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('settings', function (Blueprint $table) {
-            // Ajout de la colonne 'logo_id' à la table 'settings'
             $table->unsignedBigInteger('logo_id')->nullable()->after('id');
-            // Définition de la contrainte de clé étrangère
-            $table->foreign('logo_id')->references('id')->on('logos')->onDelete('set null');
+            // $table->foreign('logo_id')->references('id')->on('logos')->onDelete('set null');
         });
     }
 
@@ -25,7 +23,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('settings', function (Blueprint $table) {
-            // Suppression de la contrainte de clé étrangère et de la colonne 'logo_id'
             $table->dropForeign(['logo_id']);
             $table->dropColumn('logo_id');
         });

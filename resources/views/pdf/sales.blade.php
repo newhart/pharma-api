@@ -157,18 +157,22 @@
             </div>
   
         </div>
-        
+
         <div class="margin-top">
             <table class="w-full">
-                @foreach ($sales as $sale)
-                    @foreach ($sale['cartProducts'] as $product)
-                        <tr>
-                            <td class="w-half">
-                                Facture  N° : VNT-  {{ $product['id'] }}
-                            </td>            
-                        </tr>
-                    @endforeach
-                @endforeach
+                @if (count($sales) > 0)
+                    <tr>
+                        <td class="w-half">
+                            Facture N° : {{ $sales[0]['invoice_number'] ?? 'Non disponible' }}
+                        </td>
+                    </tr>
+                @else
+                    <tr>
+                        <td class="w-half">
+                            Facture N° : Non disponible
+                        </td>
+                    </tr>
+                @endif
             </table>
         </div>
 
@@ -178,46 +182,53 @@
                     <tr>
                         <td class="w-half">
                             {{ $product['name'] }}
-                           
-                          
                         </td>
                     </tr>
                 @endforeach
             @endforeach
         </table>
-      
 
-        <div class="container margin-top-small">
-            <p>
-                <span class="price">
-                    @if ($product['quantityBoite'] > 0)
-                        {{ $product['priceBoite'] }}
-                    @elseif ($product['quantityGellule'] > 0)
-                        {{ $product['priceGellule'] }}
-                    @elseif ($product['quantityPlaquette'] > 0)
-                        {{ $product['pricePlaquette'] }}
-                    @else
-                        N/A
-                    @endif
-                </span>
-                <span class="ariary">Ar</span>
-                <span class="multiply">x</span>
-                <span class="quantity">
-                    @if ($product['quantityBoite'] > 0)
-                        {{ $product['quantityBoite'] }}<br>
-                    @elseif ($product['quantityGellule'] > 0 && $product['quantityBoite'] == 0)
-                        {{ $product['quantityGellule'] }}<br>
-                    @elseif ($product['quantityPlaquette'] > 0 && $product['quantityBoite'] == 0 && $product['quantityGellule'] == 0)
-                        {{ $product['quantityPlaquette'] }}
-                    @endif
-                </span>
-            </p>
-            <p>
-                <span class="quantity">=</span>
-                <span class="price">{{ $grandTotal }}</span>   
-                <span class="ariary">Ar</span>
-            </p>
-        </div>
+        <table class=" products margin-top">
+            @foreach ($sales as $sale)
+                @foreach ($sale['cartProducts'] as $product)
+                <div class="container margin-top-small">
+                    <p>
+                        <span class="price">
+                            @if ($product['quantityBoite'] > 0)
+                                {{ $product['priceBoite'] }}
+                                <?php $total = $product['priceBoite'] * $product['quantityBoite']; ?>
+                            @elseif ($product['quantityGellule'] > 0)
+                                {{ $product['priceGellule'] }}
+                                <?php $total = $product['priceGellule'] * $product['quantityGellule']; ?>
+                            @elseif ($product['quantityPlaquette'] > 0)
+                                {{ $product['pricePlaquette'] }}
+                                <?php $total = $product['pricePlaquette'] * $product['quantityPlaquette']; ?>
+                            @else
+                                N/A
+                                <?php $total = 0; ?>
+                            @endif
+                        </span>
+                        <span class="ariary">Ar</span>
+                        <span class="multiply">x</span>
+                        <span class="quantity">
+                            @if ($product['quantityBoite'] > 0)
+                                {{ $product['quantityBoite'] }}
+                            @elseif ($product['quantityGellule'] > 0 && $product['quantityBoite'] == 0)
+                                {{ $product['quantityGellule'] }}
+                            @elseif ($product['quantityPlaquette'] > 0 && $product['quantityBoite'] == 0 && $product['quantityGellule'] == 0)
+                                {{ $product['quantityPlaquette'] }}
+                            @endif
+                        </span>
+                    </p>
+                    <p>
+                        <span class="quantity">=</span>
+                        <span class="price">{{ $total }}</span>   
+                        <span class="ariary">Ar</span>
+                    </p>
+                </div>
+                @endforeach
+            @endforeach
+        </table>
         
         <hr class="separator">
 

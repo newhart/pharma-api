@@ -37,12 +37,9 @@ Route::get('/settings/colors', [SettingController::class, 'listSettings'])->midd
 // Supprimer le type et la couleur
 Route::delete('/settings/color', [SettingController::class, 'deleteColor'])->middleware('auth:sanctum');
 
- // Mettre à jour le logo
+ // logo
 Route::post('/settings/logo', [SettingController::class, 'updateLogo'])->middleware('auth:sanctum');
-// routes/api.php
 Route::get('/settings/logos', [SettingController::class, 'listLogos'])->middleware('auth:sanctum');
-
-// Supprimer le logo
 Route::delete('/settings/logo', [SettingController::class, 'deleteLogo'])->middleware('auth:sanctum');
 
 
@@ -59,10 +56,6 @@ Route::post('/sales/checked-validation', [SaleController::class, 'checkValidatio
 Route::post('/sales/payment-mode', [SaleController::class, 'addPaymentMode']);
 
 
-
-
-
-
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum')->middleware('auth:sanctum');
 Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
 Route::get('/sales/for-one-year', [SaleController::class, 'salesForOneYear'])->middleware('auth:sanctum');
@@ -73,18 +66,17 @@ Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProg
 Route::get('/sales/in-progress', [SaleController::class, 'listInProgress'])->middleware('auth:sanctum');
 Route::get('/sales/ids-in-progress', [SaleController::class, 'getSalesIdsInProgress']);
 Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']);
-Route::get('/sales/pending', [SaleController::class, 'getPendingSales']);
+Route::get('/sales/pending', [SaleController::class, 'getAllSales']);
 Route::put('/sales/update-payment', [SaleController::class, 'updatePayment']);
 Route::get('/pending-sales/pdf', [SaleController::class, 'downloadPendingSalesPdf']);
 Route::get('/sale/{id}/pdf', [SaleController::class, 'downloadSaleDetailPdf']);
-
+Route::middleware('auth:sanctum')->get('sale/filtre_ventes', [SaleController::class, 'getVentes']);
 
 Route::post('/sales/download-report', [SaleController::class, 'downloadSalesReport']);
 
 Route::post('/validate-sale-state', [SaleController::class, 'validateSaleState']);
 
 Route::delete('/sales/delete', [SaleController::class, 'deleteSales']);
-
 
 Route::delete('/sales/{id}/clear', [SaleController::class, 'clearCurrentCart'])
     ->name('sales.clear')

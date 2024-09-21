@@ -18,13 +18,20 @@ use Illuminate\Support\Facades\View;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-
-
 class SaleController extends Controller
 
 {
-        public function store(SaleRequest $request): JsonResponse
+    public function store(SaleRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'error' => 'Utilisateur non authentifié.'
+            ], 401);
+        }
+
+        $userId = auth()->id();
+        
         // Validation des quantité disponible
         foreach ($request->cartProducts as $data) {
             $product = Product::find($data['id']);
@@ -46,17 +53,27 @@ class SaleController extends Controller
 
         // Traitement de la vente
         try {
+            $totalVente = 0;
+            foreach ($request->cartProducts as $data) {
+                $totalVente += $data['montant'];
+            }
+    
+            // Calcul de la remise
+            $remisePourcentage = $request->remise ?? 0;
+            $montantRemise = ($remisePourcentage / 100) * $totalVente;
+            $totalApresRemise = $totalVente - $montantRemise;
+
             $sale = Sale::create([
                 'saleDate' => now(),
                 'playmentDatePrevueAt' => $request->playmentDatePrevueAt ?? now(),
                 'playmentMode' => $request->paymentMode ?? 'espece',
                 'estACredit' => 'test',
-                'saleAmout' => $request->total,
-                'salePayed' => $request->total,
-                'stateSale' => 'En cours',
-                'user_id' => $request->user()->id,
+                'saleAmout' => $totalApresRemise,
+                'salePayed' => $totalApresRemise,
+                'stateSale' => 'Dans le panier',
+                'user_id' => $userId,
                 'saleStay' => 0.00,
-                'remise' => $request->remise ?? 0.00,
+                'remise' => $remisePourcentage,
             ]);
             if (($sale->saleAmount === $sale->salePayed) && $sale->saleStay === 0) {
                 $sale->stateSale = 'Valider';
@@ -70,7 +87,7 @@ class SaleController extends Controller
                         'product_id' => $product->id,
                         'sale_id' => $sale->id,
                         'amount' => $data['montant'],
-                        'user' =>  $request->user()->name,
+                        'user' => $request->user()->name,
                         'quantityBoite' => $data['quantityBoite'] ?? 0,
                         'quantityGellule' => $data['quantityGellule'] ?? 0,
                         'quantityPlaquette' => $data['quantityPlaquette'] ?? 0,
@@ -90,8 +107,7 @@ class SaleController extends Controller
         }
     }
 
-
-        public function addPaymentMode(Request $request): JsonResponse
+    public function addPaymentMode(Request $request): JsonResponse
     {
         // Validation de la requête
         $request->validate([
@@ -126,8 +142,6 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-
 
     private function convertToPercentagex(array $data, $maxValue): array
     {
@@ -365,27 +379,26 @@ class SaleController extends Controller
     }
 
         // Validation
-        public function checkValidation(Request $request)
+    public function checkValidation(Request $request)
     {
         $saleIds = $request->input('sale_ids');
         if (!is_array($saleIds) || empty($saleIds)) {
             return response()->json(['success' => false, 'message' => 'No sales IDs provided'], 400);
         }
         $sales = Sale::whereIn('id', $saleIds)->get();
-
         $finalizedSales = [];
 
         foreach ($sales as $sale) {
             $stay = $request->input('stay'); 
             $sale->saleStay = $sale->saleStay - (float) $stay;
-
         
             if ($sale->saleStay <= 0.0) {
                 $sale->stateSale = 'Valider';
                 $finalizedSales[] = $sale; 
             }
             $sale->save();
-        }        
+        }  
+
         foreach ($finalizedSales as $sale) {
             foreach ($sale->products as $product) {
                 $this->updateProductQuantities([
@@ -395,6 +408,7 @@ class SaleController extends Controller
                 ], $product);
             }
         }
+
 
         $formattedSales = collect($finalizedSales)->map(function ($sale) {
             
@@ -426,7 +440,8 @@ class SaleController extends Controller
                 'total' => $sale->saleAmout,
                 'remise' => $sale->remise,
                 'totalAmount' => $totalAmount,
-                'playmentMode' => $sale->playmentMode
+                'playmentMode' => $sale->playmentMode,
+                'invoice_number' => $sale->invoice_number,
             ];
         });
     
@@ -478,7 +493,6 @@ class SaleController extends Controller
         return response()->json($totalSalesAmount);
     }
 
-
     private function updateProductQuantities(array $data, Product $product): void
     {
         // Mise à jour des quantités disponibles
@@ -507,26 +521,24 @@ class SaleController extends Controller
     }
 
         // methode count Sales in progress
-        public function countSalesInProgress(): JsonResponse
+    public function countSalesInProgress(): JsonResponse
     { 
-        $count = Sale::where('stateSale', 'En cours')->count();  
+        $count = Sale::where('stateSale', 'Dans le panier')->count();  
 
-         $totalSalePayed = Sale::where('stateSale', 'En cours')->sum('salePayed');  
+         $totalSalePayed = Sale::where('stateSale', 'Dans le panier')->sum('salePayed');  
 
-        return response()->json([ // Retourner la réponse avec le nombre de ventes en cours
+        return response()->json([ 
             'count' => $count,
             'totalSalePayed' => $totalSalePayed
         ]);
     }
 
     // methode qui recupere les vente en cours
-        public function listInProgress(): JsonResponse
-    {
-       
-        $salesInProgress = Sale::where('stateSale', 'En cours')
+    public function listInProgress(): JsonResponse
+    {     
+        $salesInProgress = Sale::where('stateSale', 'Dans le panier')
             ->with('products')
             ->get();
-
     
         $formattedSales = $salesInProgress->map(function ($sale) {
             
@@ -553,13 +565,17 @@ class SaleController extends Controller
 
            
             $totalAmount = $cartProducts->sum('montant');
+   
+            $remise = $sale->remise ? ($totalAmount * $sale->remise / 100) : 0;
+
+            $totalAmountAvecRemise = $totalAmount - $remise;
 
                 return [
                 
                     'cartProducts' => $cartProducts,
                     'total' => $sale->saleAmout,
                     'remise' => $sale->remise,
-                    'totalAmount' => $totalAmount,
+                    'totalAmount' => $totalAmountAvecRemise,
                     'playmentMode' => $sale->playmentMode
                 ];
         });
@@ -573,7 +589,7 @@ class SaleController extends Controller
     }
 
      // methode qui recupere les ids de vente en cours
-        public function getSalesIdsInProgress(): JsonResponse
+    public function getSalesIdsInProgress(): JsonResponse
     {
        
         $salesInProgress = Sale::where('stateSale', 'En cours')
@@ -585,10 +601,9 @@ class SaleController extends Controller
         ]);
     }
 
-
         // supprimer panier en cours
-        public function clearCurrentCart(int $saleId): JsonResponse
-        {
+    public function clearCurrentCart(int $saleId): JsonResponse
+    {
             // Trouver la vente en cours
             $sale = Sale::find($saleId);
     
@@ -607,20 +622,39 @@ class SaleController extends Controller
             return response()->json([
                 'success' => 'Panier supprimé avec succès.'
             ]);
+    }    
+    
+    // filtre
+    public function getVentes(Request $request)
+    {
+        $filter = $request->input('filter', 'all');
+    
+        $query = Sale::query(); 
+    
+        $states = [
+            'valider' => 'Valider',
+            'enCours' => 'En cours',
+            'depasser' => 'Date dépassée',
+        ];
+        if (array_key_exists($filter, $states)) {
+            $query->where('stateSale', $states[$filter]);
         }
+        $allSales = $query->get();
+    
+        return response()->json(['allSales' => $allSales]);
+    }
+    
 
-       
      
     // Méthode pour calculer le montant d'un produit
-        private function calculateProductAmount($product, $sale)
+    private function calculateProductAmount($product, $sale)
     {
         return ($product->pivot->priceSaleBoite * $product->pivot->quantityBoite) +
             ($product->pivot->priceSaleGellule * $product->pivot->quantityGellule) +
             ($product->pivot->priceSalePlaquette * $product->pivot->quantityPlaquette);
     }
 
-
-        public function updateSaleDetails(Request $request): JsonResponse
+    public function updateSaleDetails(Request $request): JsonResponse
     {
         $request->validate([
             'saleIds' => 'required|array',
@@ -668,7 +702,7 @@ class SaleController extends Controller
 
                 // Mettre à jour l'état de la vente
                 if ($sale->amount_remaining > 0) {
-                    $sale->stateSale = 'Non validée';
+                    $sale->stateSale = 'En cours';
                 } else {
                     $sale->stateSale = 'Paid';
                 }
@@ -732,34 +766,40 @@ class SaleController extends Controller
         }
     }
 
-        // listes des ventes a credit
-        public function getPendingSales(): JsonResponse
+        // listes des ventes a credit 
+    public function getAllSales(): JsonResponse
     {
         try {
-            // Récupérer toutes les ventes avec l'état 'Non validée'
-            $pendingSales = Sale::where('stateSale', 'Non validée')
-                                ->with('products')
-                                ->get();
+            // Récupérer toutes les ventes avec les états 'Non validée' et 'Valider'
+            $allSales = Sale::whereIn('stateSale', ['En cours', 'Valider', 'Date dépassée'])
+                            ->with('products')
+                            ->get();
 
-            if ($pendingSales->isEmpty()) {
+            if ($allSales->isEmpty()) {
                 return response()->json([
-                    'message' => 'Aucune vente non validée trouvée.'
+                    'message' => 'Aucune vente trouvée'
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'pendingSales' => $pendingSales->map(function ($sale) {
-                // Vérifier si la date prévue est dépassée
-                $playmentDatePrevueAt = \Carbon\Carbon::parse($sale->playmentDatePrevueAt);
-                $currentDate = \Carbon\Carbon::now();
+                'allSales' => $allSales->map(function ($sale) {
+                    $isDateExceeded = false;
+                    if ($sale->stateSale === 'En cours') {
+                        $playmentDatePrevueAt = \Carbon\Carbon::parse($sale->playmentDatePrevueAt);
+                        $currentDate = \Carbon\Carbon::now();
+                        if ($currentDate->greaterThan($playmentDatePrevueAt)) {
+                            $isDateExceeded = true;
+                            $sale->stateSale = 'Date dépassée';
+                            $sale->save(); 
+                        }
+                    }
 
-                $stateSale = $currentDate->greaterThan($playmentDatePrevueAt) ? 'Date dépassée' : $sale->stateSale;
-
+                     if ($sale->stateSale === 'En cours') {
                     return [
                         'id' => $sale->id,
                         'reference' => 'VNT-' . $sale->id,
-                        'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'), 
+                        'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'),
                         'saleAmout' => $sale->saleAmout,
                         'salePayed' => $sale->salePayed,
                         'saleStay' => $sale->saleStay,
@@ -768,7 +808,7 @@ class SaleController extends Controller
                         'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
                         'clientName' => $sale->clientName,
                         'description' => $sale->description,
-                        'stateSale' => $sale->stateSale,
+                        'stateSale' => $isDateExceeded ? 'Date dépassée' : $sale->stateSale,
                         'remise' => $sale->remise,
                         'created_at' => $sale->created_at->format('d-m-Y H:i:s'),
                         'updated_at' => $sale->updated_at->format('d/m/Y'),
@@ -777,32 +817,54 @@ class SaleController extends Controller
                         'invoice_number' => $sale->invoice_number,
                         'amount_remaining' => $sale->saleAmout - $sale->salePayed,
                         'products' => $sale->products->map(function ($product) {
-                        return [
-                            'product_id' => $product->id,
-                            'name' => $product->name,
-                            'quantityGellule' => $product->pivot->quantityGellule,
-                            'quantityPlaquette' => $product->pivot->quantityPlaquette,
-                            'quantityBoite' => $product->pivot->quantityBoite,
-                            'priceSaleGellule' => $product->pivot->priceSaleGellule,
-                            'priceSalePlaquette' => $product->pivot->priceSalePlaquette,
-                            'priceSaleBoite' => $product->pivot->priceSaleBoite,
-                            'amount' => $product->pivot->amount,
-                            'user' => $product->pivot->user,
-                        ];
-                    })
+                            return [
+                                'product_id' => $product->id,
+                                'name' => $product->name,
+                                'quantityGellule' => $product->pivot->quantityGellule,
+                                'quantityPlaquette' => $product->pivot->quantityPlaquette,
+                                'quantityBoite' => $product->pivot->quantityBoite,
+                                'priceSaleGellule' => $product->pivot->priceSaleGellule,
+                                'priceSalePlaquette' => $product->pivot->priceSalePlaquette,
+                                'priceSaleBoite' => $product->pivot->priceSaleBoite,
+                                'amount' => $product->pivot->amount,
+                                'user' => $product->pivot->user,
+                            ];
+                        })
                     ];
-                })
+                }
+
+                // Ventes 'Valider'
+                return [
+                    'id' => $sale->id,
+                    'reference' => 'VNT-' . $sale->id,
+                    'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'),
+                    'saleAmout' => $sale->saleAmout,
+                    'salePayed' => $sale->salePayed,
+                    'amount_remaining' => $sale->saleAmout - $sale->salePayed,
+                    'saleStay' => $sale->saleStay,
+                    'estACredit' => $sale->estACredit,
+                    'playmentMode' => $sale->playmentMode,
+                    'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+                    'clientName' => $sale->clientName,
+                    'description' => $sale->description,
+                    'stateSale' => $sale->stateSale,
+                    'remise' => $sale->remise,
+                    'invoice_number' => $sale->invoice_number,
+                    'user_id' => $sale->user_id,
+                    'created_at' => $sale->created_at->format('d-m-Y H:i:s'),
+                    'updated_at' => $sale->updated_at->format('d/m-Y H:i:s'),
+                ];
+            })
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Une erreur est survenue lors de la récupération des ventes non validées.',
+                'error' => 'Une erreur est survenue lors de la récupération des ventes',
                 'message' => $e->getMessage()
             ], 500);
         }
-    }   
+    }
 
-
-        public function updatePayment(Request $request): JsonResponse
+    public function updatePayment(Request $request): JsonResponse
     {
         try {
             // Récupérer les IDs des ventes à mettre à jour
@@ -870,10 +932,8 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-
     
-        public function validateSaleState(Request $request)
+    public function validateSaleState(Request $request)
     {
         // Valider la requête
         $validatedData = $request->validate([
@@ -899,9 +959,8 @@ class SaleController extends Controller
 
     }
 
-
         // doanload
-        public function downloadSalesReport(Request $request)
+    public function downloadSalesReport(Request $request)
     {
         // Valider la requête
         $validatedData = $request->validate([
@@ -928,8 +987,7 @@ class SaleController extends Controller
         );
     }
 
-
-        public function deleteSales(Request $request): JsonResponse
+    public function deleteSales(Request $request): JsonResponse
     {
         // Valider les données de la requête avec le nom de champ 'saleIds'
         $validatedData = $request->validate([
@@ -1068,7 +1126,7 @@ class SaleController extends Controller
     ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');
     }
         
-        public function downloadSaleDetailPdf($id)
+    public function downloadSaleDetailPdf($id)
     {
         // Récupérer la vente spécifique
         $sale = Sale::where('id', $id)
@@ -1170,7 +1228,6 @@ class SaleController extends Controller
             ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
             ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');
     }
-
 }
 
 
