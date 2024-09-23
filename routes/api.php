@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 
-
 // auth user
 Route::post('login', [\App\Http\Controllers\LoginUserController::class, 'login']);
 // logout  user
@@ -24,15 +23,12 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // route product resource
 Route::resource('product', ProductController::class)->middleware('auth:sanctum');
 
-
 // pdf
 Route::get('/download-product-list', [PdfController::class, 'generateProductList'])->middleware('auth:sanctum');
-
 
 // Mettre a jour le type et la couleur
 Route::post('/settings/color', [SettingController::class, 'updateColor'])->middleware('auth:sanctum');
 Route::get('/settings/colors', [SettingController::class, 'listSettings'])->middleware('auth:sanctum');
-
 
 // Supprimer le type et la couleur
 Route::delete('/settings/color', [SettingController::class, 'deleteColor'])->middleware('auth:sanctum');
@@ -41,7 +37,6 @@ Route::delete('/settings/color', [SettingController::class, 'deleteColor'])->mid
 Route::post('/settings/logo', [SettingController::class, 'updateLogo'])->middleware('auth:sanctum');
 Route::get('/settings/logos', [SettingController::class, 'listLogos'])->middleware('auth:sanctum');
 Route::delete('/settings/logo', [SettingController::class, 'deleteLogo'])->middleware('auth:sanctum');
-
 
 // get all users
 Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');
@@ -54,7 +49,6 @@ Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('a
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/sales/checked-validation', [SaleController::class, 'checkValidation'])->middleware('auth:sanctum');
 Route::post('/sales/payment-mode', [SaleController::class, 'addPaymentMode']);
-
 
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum')->middleware('auth:sanctum');
 Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
@@ -82,15 +76,17 @@ Route::delete('/sales/{id}/clear', [SaleController::class, 'clearCurrentCart'])
     ->name('sales.clear')
     ->middleware('auth:sanctum');
 
-
-
-
-
 // order api ressource
-Route::post('/order/{id}', [OrderController::class, 'store']);
-Route::get('/orders', [OrderController::class, 'index']);
-Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel']);
-Route::post('/order/validation/store', [OrderController::class, 'validation']);
+// Route pour ajouter des produits au panier
+Route::post('/cart', [OrderController::class, 'addToCart'])->middleware('auth:sanctum');
+
+// Route pour finaliser la commande
+Route::post('/order/finalize', [OrderController::class, 'finalizeOrder'])->middleware('auth:sanctum');
+
+Route::post('/order/{id}', [OrderController::class, 'store'])->middleware('auth:sanctum');
+Route::get('/orders', [OrderController::class, 'index'])->middleware('auth:sanctum');
+Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel'])->middleware('auth:sanctum');
+Route::post('/order/validation/store', [OrderController::class, 'validation'])->middleware('auth:sanctum');
 // setting ressource
 Route::get('/settings', [SettingController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/settings', [SettingController::class, 'store'])->middleware('auth:sanctum');

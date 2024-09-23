@@ -10,7 +10,7 @@ class Order extends Model
 {
     use HasFactory;
     public  $timestamps = false;
-    protected  $fillable = ['dateCommande'];
+    protected  $fillable = ['dateCommande', 'user_id'];
 
     public function products(): BelongsToMany
     {

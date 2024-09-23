@@ -767,13 +767,46 @@ class SaleController extends Controller
     }
 
         // listes des ventes a credit 
-    public function getAllSales(): JsonResponse
+    public function getAllSales(Request $request): JsonResponse
     {
+        $searchTerm = $request->input('searchTerm');
+        $clientName = $request->input('clientName');
+        $reference = $request->input('reference');
+        $stateSale = $request->input('stateSale');
+        $startDate = $request->input('startDate');
+        $endDate = $request->input('endDate');    
+
         try {
             // Récupérer toutes les ventes avec les états 'Non validée' et 'Valider'
-            $allSales = Sale::whereIn('stateSale', ['En cours', 'Valider', 'Date dépassée'])
-                            ->with('products')
-                            ->get();
+            $query  = Sale::whereIn('stateSale', ['En cours', 'Valider', 'Date dépassée'])
+                            ->with('products');
+                            // ->get();
+
+            if ($searchTerm) {
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('clientName', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('reference', 'like', '%' . $searchTerm . '%');
+                    });
+            }
+
+            if ($clientName) {
+                $query->where('clientName', 'like', '%' . $clientName . '%');
+            }
+    
+            if ($reference) {
+                $query->where('reference', 'like', '%' . $reference . '%');
+            }
+    
+            if ($stateSale) {
+                $query->where('stateSale', $stateSale);
+            }
+    
+            if ($startDate && $endDate) {
+                $query->whereBetween('saleDate', [$startDate, $endDate]);
+            }
+    
+
+            $allSales = $query->get();
 
             if ($allSales->isEmpty()) {
                 return response()->json([
@@ -794,8 +827,7 @@ class SaleController extends Controller
                             $sale->save(); 
                         }
                     }
-
-                     if ($sale->stateSale === 'En cours') {
+    
                     return [
                         'id' => $sale->id,
                         'reference' => 'VNT-' . $sale->id,
@@ -831,30 +863,7 @@ class SaleController extends Controller
                             ];
                         })
                     ];
-                }
-
-                // Ventes 'Valider'
-                return [
-                    'id' => $sale->id,
-                    'reference' => 'VNT-' . $sale->id,
-                    'saleDate' => \Carbon\Carbon::parse($sale->saleDate)->format('d/m/Y'),
-                    'saleAmout' => $sale->saleAmout,
-                    'salePayed' => $sale->salePayed,
-                    'amount_remaining' => $sale->saleAmout - $sale->salePayed,
-                    'saleStay' => $sale->saleStay,
-                    'estACredit' => $sale->estACredit,
-                    'playmentMode' => $sale->playmentMode,
-                    'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
-                    'clientName' => $sale->clientName,
-                    'description' => $sale->description,
-                    'stateSale' => $sale->stateSale,
-                    'remise' => $sale->remise,
-                    'invoice_number' => $sale->invoice_number,
-                    'user_id' => $sale->user_id,
-                    'created_at' => $sale->created_at->format('d-m-Y H:i:s'),
-                    'updated_at' => $sale->updated_at->format('d/m-Y H:i:s'),
-                ];
-            })
+                })
             ]);
         } catch (\Exception $e) {
             return response()->json([
