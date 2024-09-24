@@ -28,53 +28,99 @@ class OrderController extends Controller
     //     return response()->json(['success' => true, 'order_id' => $order->id]);
     // }
 
-    public function addToCart(Request $request): JsonResponse
+    // public function store(Request $request): JsonResponse
+    // {
+    //     $user = Auth::user();
+    //     if (!$user) {
+    //         return response()->json(['error' => 'User not authenticated'], 401);
+    //     }
+
+    //     // Validation de la requête
+    //     $request->validate([
+    //         'products' => 'required|array',
+    //         'products.*.quantityBoite' => 'required|integer|min:1',
+    //         'products.*.price' => 'required|numeric|min:0',
+    //     ]);
+
+    //     // Création de la commande
+    //     $order = Order::create([
+    //         'dateCommande' => now(),
+    //         'user_id' => $user->id
+    //     ]);
+
+    //     // Boucle à travers les produits et création des relations
+    //     foreach ($request->products as $productData) {
+    //         $product = Product::findOrFail($productData['product_id']); // Assurez-vous que product_id est inclus dans la requête
+    //         $this->createOrder($productData, $order->id, $product->id);
+    //     }
+
+    //     return response()->json(['success' => true, 'order_id' => $order->id]);
+    // }
+
+    public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'User not authenticated'], 401);
         }
+        $request->validate([
+            'products' => 'required|array',
+            'products.*.quantityBoite' => 'required|integer|min:1',
+            'products.*.price' => 'required|numeric|min:0',
+        ]);
 
-        // Ajoutez les produits au panier (ex : dans une table 'carts')
-        $cart = DB::table('carts')->updateOrInsert(
-            ['user_id' => $user->id],
-            ['products' => json_encode($request->products)]
-        );
-
-        return response()->json(['success' => true, 'message' => 'Products added to cart']);
-    }
-
-    public function finalizeOrder(Request $request): JsonResponse
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['error' => 'User not authenticated'], 401);
-        }
-
-        // Récupérer les produits du panier
-        $cart = DB::table('carts')->where('user_id', $user->id)->first();
-
-        if (!$cart) {
-            return response()->json(['error' => 'Cart is empty'], 400);
-        }
-
-        // Créez la commande
         $order = Order::create([
             'dateCommande' => now(),
             'user_id' => $user->id
         ]);
 
-        // Parcourez les produits et ajoutez-les à la commande
-        foreach (json_decode($cart->products) as $product) {
-            $this->createOrder($request, $order->id, $product->id);
+        foreach ($request->products as $productData) {
+            $product = Product::findOrFail($productData['product_id']);
+            $this->createOrder($productData, $order->id, $product->id);
         }
-
-        // Optionnel : supprimer les produits du panier après finalisation
-        DB::table('carts')->where('user_id', $user->id)->delete();
 
         return response()->json(['success' => true, 'order_id' => $order->id]);
     }
 
+    private function createOrder(array $productData, int $order_id, int $product_id): void
+    {
+        $quantityForOrder = $productData['quantityBoite'];
+        if (is_null($quantityForOrder)) {
+            throw new \Exception('Quantity for order cannot be null');
+        }
+
+        DB::table('order_product')->insert([
+            'montantOrder' => (int) $quantityForOrder * (float) $productData['price'],
+            'quantityForOrder' => $quantityForOrder,
+            'fournisseurPrice' => $productData['price'],
+            'order_id' => $order_id,
+            'product_id' => $product_id
+        ]);
+    }
+
+    public function addProductToOrder(Request $request, int $orderId): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+
+        $request->validate([
+            'products' => 'required|array',
+            'products.*.quantityBoite' => 'required|integer|min:1',
+            'products.*.price' => 'required|numeric|min:0',
+            'products.*.product_id' => 'required|integer|exists:products,id',
+        ]);
+
+        $order = Order::findOrFail($orderId);
+
+        foreach ($request->products as $productData) {
+            $product = Product::findOrFail($productData['product_id']);
+            $this->createOrder($productData, $order->id, $product->id);
+        }
+
+        return response()->json(['success' => true, 'order_id' => $order->id]);
+    }
 
     public function index(): JsonResponse
     {
@@ -86,21 +132,6 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    private function createOrder(Request $request,  int $order_id, int $product_id): void
-    {
-            $quantityForOrder = $request->quantityBoite;
-        if (is_null($quantityForOrder)) {
-            throw new \Exception('Quantity for order cannot be null');
-        }
-        
-        DB::table('order_product')->insert([
-            'montantOrder' => (int) $request->quantityBoite * (float) $request->price,
-            'quantityForOrder' => $request->quantityBoite,
-            'fournisseurPrice' => $request->price,
-            'order_id' => $order_id,
-            'product_id' => $product_id
-        ]);
-    }
     private function  updateProduct(Product $product, $order): void
     {
         $product->quantityBoite = $product->quantityBoite + $order->quantityForOrder;
@@ -123,6 +154,31 @@ class OrderController extends Controller
             return response()->json(['error' => $th->getMessage()]);
         }
     }
+
+    public function deleteProductFromOrder(Request $request, int $order_id): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+
+        $request->validate([
+            'product_id' => 'required|integer|exists:products,id',
+        ]);
+
+        $order = Order::find($order_id);
+        if (!$order) {
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        DB::table('order_product')
+            ->where('order_id', $order_id)
+            ->where('product_id', $request->product_id)
+            ->delete();
+
+        return response()->json(['success' => true, 'message' => 'Product removed from order successfully']);
+    }
+
 
     public function validation(Request $request): JsonResponse
     {
