@@ -37,6 +37,7 @@ class Product extends Model
 
     public function enters(): BelongsToMany
     {
-        return $this->belongsToMany(Enter::class);
+        return $this->belongsToMany(Enter::class, 'enter_product')
+                    ->withPivot('quantityEnter', 'created_at', 'updated_at');
     }
 }

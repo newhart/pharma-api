@@ -57,6 +57,7 @@ class OrderController extends Controller
     //     return response()->json(['success' => true, 'order_id' => $order->id]);
     // }
 
+    // create Order
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
@@ -178,7 +179,6 @@ class OrderController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Product removed from order successfully']);
     }
-
 
     public function validation(Request $request): JsonResponse
     {

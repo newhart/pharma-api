@@ -10,7 +10,7 @@ class Enter extends Model
 {
     use HasFactory;
     public  $timestamps = false ;
-    protected  $fillable = ['dateEntrer'];
+    protected  $fillable = ['dateEntrer', 'user_id'];
 
     public function products() : BelongsToMany
     {

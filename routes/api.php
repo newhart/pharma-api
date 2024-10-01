@@ -12,6 +12,7 @@ use App\Http\Controllers\SettingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\SupplyController;
 
 // auth user
 Route::post('login', [\App\Http\Controllers\LoginUserController::class, 'login']);
@@ -82,16 +83,22 @@ Route::post('/cart', [OrderController::class, 'addToCart'])->middleware('auth:sa
 
 // Route pour finaliser la commande
 Route::post('/order/finalize', [OrderController::class, 'finalizeOrder'])->middleware('auth:sanctum');
-
 Route::post('/order', [OrderController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/orders/{orderId}/add-products', [OrderController::class, 'addProductToOrder'])->middleware('auth:sanctum');
 Route::get('/orders', [OrderController::class, 'index'])->middleware('auth:sanctum');
-
 Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel'])->middleware('auth:sanctum');
-
 Route::delete('/orders/{order_id}/products/remove', [OrderController::class, 'deleteProductFromOrder'])->middleware('auth:sanctum');
-
 Route::post('/order/validation/store', [OrderController::class, 'validation'])->middleware('auth:sanctum');
+
+// Approvisionnement
+Route::post('/supply/add/{id_product}', [SupplyController::class, 'addSupply'])->middleware('auth:sanctum');
+Route::get('/supplies', [SupplyController::class, 'listSupplies'])->middleware('auth:sanctum');
+Route::post('/shelf-life-settings', [SupplyController::class, 'setDifferenceInYears'])->middleware('auth:sanctum');
+Route::delete('/supply/{id}', [SupplyController::class, 'deleteSupply'])->middleware('auth:sanctum');
+
+
+
+
 // setting ressource
 Route::get('/settings', [SettingController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/settings', [SettingController::class, 'store'])->middleware('auth:sanctum');
