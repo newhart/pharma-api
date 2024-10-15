@@ -22,63 +22,80 @@ class MenuSeeder extends Seeder
                 "text" => "Tableau de bord",
             ),
             array(
-                "to" => "/products",
+                "to" => "/dashboard/produits",
                 "icon" => "mdi-chart-bar",
-                "text" => "Produits",
+                "text" => "Gestion des produits",
             ),
+            
             array(
-                "to" => "/users",
-                "icon" => "mdi-account-star",
-                "text" => "Utilisateurs",
-                "sublinks" => array(
-                    array(
-                        "to" => "/users",
-                        "icon" => "mdi-cogs",
-                        "text" => "Listes des utilisateurs",
-                    ),
-                    array(
-                        "to" => "/users/roles",
-                        "icon" => "mdi-cogs",
-                        "text" => "Gestion des roles",
-                    ),
-                ),
-            ),
-            array(
-                "to" => "/ventes",
+                "to" => "/dashboard/vente",
                 "icon" => "mdi-cart-percent",
-                "text" => "Vente",
+                "text" => "Gestion des Ventes",
             ),
             array(
-                "to" => "/inventaires",
+                "to" => "/dashboard/commandes",
+                "icon" => "mdi-heart",
+                "text" => "Gestion des commandes",
+            ),
+            array(
+                "to" => "/dashboard/approvisionnement",
+                "icon" => "mdi-cogs",
+                "text" => "Approvisionnements",
+            ),
+            array(
+                "to" => "/dashboard/inventaire",
                 "icon" => "mdi-store",
                 "text" => "Inventaire",
                 "sublinks" => array(
                     array(
-                        "to" => "/inventaires",
+                        "to" => "/dashboard/inventaire/ventes",
                         "icon" => "mdi-store",
-                        "text" => "Liste de invetaire",
+                        "text" => "Inventaire des ventes",
+                    ),
+                    array(
+                        "to" => "/dashboard/inventaire/commandes",
+                        "icon" => "mdi-store",
+                        "text" => "Inventaires commandes",
+                    ),
+                    array(
+                        "to" => "/dashboard/inventaire/entrer",
+                        "icon" => "mdi-store",
+                        "text" => "Inventaires des entrées",
+                    ),
+                ),
+            ),
+            
+            array(
+                "to" => "/dashboard/utilisateurs",
+                "icon" => "mdi-account-star",
+                "text" => "Utilisateurs",
+                "sublinks" => array(
+                    array(
+                        "to" => "/dashboard/utilisateurs/gestion",
+                        "icon" => "mdi-cogs",
+                        "text" => "Gestion des utilisateurs",
+                    ),
+                    array(
+                        "to" => "/dashboard/utilisateurs/role",
+                        "icon" => "mdi-cogs",
+                        "text" => "Gestion des rôles",
                     ),
                 ),
             ),
             array(
-                "to" => "/commandes",
-                "icon" => "mdi-heart",
-                "text" => "Commandes",
-            ),
-            array(
-                "to" => "/settings",
+                "to" => "/dashboard/parametres",
                 "icon" => "mdi-cogs",
                 "text" => "Paramètres",
                 "sublinks" => array(
                     array(
-                        "to" => "/settings",
-                        "icon" => "mdi-cogs",
-                        "text" => "Produits",
-                    ),
-                    array(
-                        "to" => "/settings/entreprise",
+                        "to" => "/dashboard/parametres/entreprises",
                         "icon" => "mdi-cogs",
                         "text" => "Entreprise",
+                    ),
+                    array(
+                        "to" => "/dashboard/parametres/produits",
+                        "icon" => "mdi-cogs",
+                        "text" => "Produits",
                     ),
                 ),
             ),

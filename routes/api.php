@@ -86,7 +86,7 @@ Route::post('/order/finalize', [OrderController::class, 'finalizeOrder'])->middl
 Route::post('/order', [OrderController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/orders/{orderId}/add-products', [OrderController::class, 'addProductToOrder'])->middleware('auth:sanctum');
 Route::get('/orders', [OrderController::class, 'index'])->middleware('auth:sanctum');
-Route::delete('/order/cancel/{product}/{order}', [OrderController::class, 'cancel'])->middleware('auth:sanctum');
+Route::delete('/order/cancel/{order}', [OrderController::class, 'cancel'])->middleware('auth:sanctum');
 Route::delete('/orders/{order_id}/products/remove', [OrderController::class, 'deleteProductFromOrder'])->middleware('auth:sanctum');
 Route::post('/order/validation/store', [OrderController::class, 'validation'])->middleware('auth:sanctum');
 

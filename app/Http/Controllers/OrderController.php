@@ -11,52 +11,6 @@ use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
-    // public function store(int $product_id, Request $request): JsonResponse
-    // {
-    //     $user = Auth::user();
-    //     if (!$user) {
-    //         return response()->json(['error' => 'User not authenticated'], 401);
-    //     }
-
-    //     $order = Order::create([
-    //         'dateCommande' => now(),
-    //         'user_id' => $user->id
-    //     ]);
-    //     $product = Product::findOrFail($product_id);
-    //     $this->createOrder($request, $order->id, $product->id);
-
-    //     return response()->json(['success' => true, 'order_id' => $order->id]);
-    // }
-
-    // public function store(Request $request): JsonResponse
-    // {
-    //     $user = Auth::user();
-    //     if (!$user) {
-    //         return response()->json(['error' => 'User not authenticated'], 401);
-    //     }
-
-    //     // Validation de la requête
-    //     $request->validate([
-    //         'products' => 'required|array',
-    //         'products.*.quantityBoite' => 'required|integer|min:1',
-    //         'products.*.price' => 'required|numeric|min:0',
-    //     ]);
-
-    //     // Création de la commande
-    //     $order = Order::create([
-    //         'dateCommande' => now(),
-    //         'user_id' => $user->id
-    //     ]);
-
-    //     // Boucle à travers les produits et création des relations
-    //     foreach ($request->products as $productData) {
-    //         $product = Product::findOrFail($productData['product_id']); // Assurez-vous que product_id est inclus dans la requête
-    //         $this->createOrder($productData, $order->id, $product->id);
-    //     }
-
-    //     return response()->json(['success' => true, 'order_id' => $order->id]);
-    // }
-
     // create Order
     public function store(Request $request): JsonResponse
     {
@@ -133,28 +87,34 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    private function  updateProduct(Product $product, $order): void
+    private function updateProduct(Product $product, $order): void
     {
         $product->quantityBoite = $product->quantityBoite + $order->quantityForOrder;
         $product->quantityPlaquette = $product->quantityBoite * $product->numberPlaquette;
         $product->quantityGellule = $product->quantityPlaquette * $product->numberGellule;
         $product->save();
     }
-    public function cancel(int $product_id, int $order_id): JsonResponse
-    {
-        $user = Auth::user();
-        $order = Order::where('id', $order_id)->where('user_id', $user->id)->firstOrFail();
-        try {
-            DB::table('order_product')->where('order_id', $order_id)
-                ->where('product_id', $product_id)
-                ->delete();
-            $order->delete();
 
-            return response()->json(['success' => true]);
-        } catch (\Throwable $th) {
-            return response()->json(['error' => $th->getMessage()]);
-        }
+  public function cancel(int $order_id): JsonResponse
+{
+    $user = Auth::user();
+    $order = Order::where('id', $order_id)
+        ->where('user_id', $user->id)
+        ->firstOrFail();
+
+    try {
+        DB::table('order_product')
+            ->where('order_id', $order_id)
+            ->delete();
+
+        $order->delete();
+
+        return response()->json(['success' => true]);
+    } catch (\Throwable $th) {
+        return response()->json(['error' => $th->getMessage()]);
     }
+}
+
 
     public function deleteProductFromOrder(Request $request, int $order_id): JsonResponse
     {
