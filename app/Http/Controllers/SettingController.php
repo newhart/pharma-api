@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -182,5 +183,16 @@ class SettingController extends Controller
         $settings = Setting::all();
 
         return response()->json($settings, 200);
+    }
+
+    public function currentDate(): JsonResponse
+    {
+        $currentDate = Carbon::now()->locale('fr');
+        $formattedDate = $currentDate->isoFormat('dddd D MMMM YYYY');
+
+        return response()->json([
+            'formatted_date' => $formattedDate,
+            'time' => $currentDate->toTimeString(),
+        ], 200);
     }
 }

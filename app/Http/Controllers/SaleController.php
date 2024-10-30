@@ -113,7 +113,7 @@ class SaleController extends Controller
         $request->validate([
             'paymentMode' => 'required|string',
             'saleIds' => 'required|array',
-            'saleIds.*' => 'integer|exists:sales,id', // Validation pour chaque ID
+            'saleIds.*' => 'integer|exists:sales,id',
         ]);
 
         $saleIds = $request->input('saleIds');
@@ -143,7 +143,7 @@ class SaleController extends Controller
         }
     }
 
-    private function convertToPercentagex(array $data, $maxValue): array
+    private function convertToPercentage(array $data, $maxValue): array
     {
         $transformFunction = function ($value) use ($maxValue) {
             return ($maxValue > 0) ? ($value / $maxValue) * 100 : 0;
@@ -152,53 +152,100 @@ class SaleController extends Controller
         return array_map($transformFunction, $data);
     }
 
+    // public function lastWeekSales()
+    // {
+    //     // Définir la locale de Carbon en français
+    //     Carbon::setLocale('fr');
+    //     // Get the start and end dates of the current week
+    //     $startDate = Carbon::now()->subWeek()->startOfWeek();
+    //     $endDate = Carbon::now()->subWeek()->endOfWeek();
+
+    //     // Retrieve sales data for this week
+
+    //     // Retrieve sales data for one year and update the values for each day
+    //     $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
+    //         ->selectRaw('DAYOFWEEK(created_at) as day, SUM(saleAmout) as ca')
+    //         ->groupBy('day')
+    //         ->get();
+
+    //     // Create an associative array to store the results with initial values set to zero
+    //     $salesArray = [
+    //         'Lun' => 0, // Monday
+    //         'Mar' => 0, // Tuesday
+    //         'Mer' => 0, // Wednesday
+    //         'Jeu' => 0, // Thursday
+    //         'Ven' => 0, // Friday
+    //         'Sam' => 0, // Saturday
+    //         'Dim' => 0, // Sunday
+    //     ];
+
+    //     // Initialize a variable to store the maximum result
+    //     $maxResult = 0;
+
+    //     // Iterate through the sales data and put the results in the array
+    //     foreach ($sales as $key =>  $sale) {
+    //         $dayNumber = intval($sale->day);
+    //         if ($dayNumber >= 1 && $dayNumber <= 7) {
+    //             $dayName = $this->getDayName($dayNumber);
+    //             $salesArray[$dayName] = $sale->ca;
+
+    //             // Update the maximum result if the current CA is greater
+    //             if ($sale->ca > $maxResult) {
+    //                 $maxResult = $sale->ca;
+    //             }
+    //         }
+    //     }
+
+    //     // Return the sales data as a JSON response
+    //     return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
+    // }
     public function lastWeekSales()
     {
         // Définir la locale de Carbon en français
         Carbon::setLocale('fr');
-        // Get the start and end dates of the current week
-        $startDate = Carbon::now()->subWeek()->startOfWeek();
-        $endDate = Carbon::now()->subWeek()->endOfWeek();
-
-        // Retrieve sales data for this week
-
-        // Retrieve sales data for one year and update the values for each day
+    
+        // Déterminer la date de début et de fin pour la semaine dernière
+        $startDate = Carbon::now()->startOfWeek()->subWeek(); // Début de la semaine dernière
+        $endDate = Carbon::now()->endOfWeek()->subWeek(); // Fin de la semaine dernière
+    
+        // Récupération des ventes de la semaine dernière
         $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('DAYOFWEEK(created_at) as day, SUM(saleAmout) as ca')
+            ->selectRaw('DAYOFWEEK(created_at) as day, SUM(saleAmout) as total_sales')
             ->groupBy('day')
             ->get();
-
-        // Create an associative array to store the results with initial values set to zero
+    
+        // Initialiser les valeurs des jours de la semaine à 0
         $salesArray = [
-            'Lun' => 0, // Monday
-            'Mar' => 0, // Tuesday
-            'Mer' => 0, // Wednesday
-            'Jeu' => 0, // Thursday
-            'Ven' => 0, // Friday
-            'Sam' => 0, // Saturday
-            'Dim' => 0, // Sunday
+            'Lun' => 0,
+            'Mar' => 0,
+            'Mer' => 0,
+            'Jeu' => 0,
+            'Ven' => 0,
+            'Sam' => 0,
+            'Dim' => 0,
         ];
-
-        // Initialize a variable to store the maximum result
-        $maxResult = 0;
-
-        // Iterate through the sales data and put the results in the array
-        foreach ($sales as $key =>  $sale) {
+    
+        // Remplir le tableau avec les résultats des ventes
+        foreach ($sales as $sale) {
             $dayNumber = intval($sale->day);
             if ($dayNumber >= 1 && $dayNumber <= 7) {
                 $dayName = $this->getDayName($dayNumber);
-                $salesArray[$dayName] = $sale->ca;
-
-                // Update the maximum result if the current CA is greater
-                if ($sale->ca > $maxResult) {
-                    $maxResult = $sale->ca;
-                }
+                $salesArray[$dayName] = $sale->total_sales; // Total des ventes pour ce jour
             }
         }
-
-        // Return the sales data as a JSON response
-        return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
+    
+        // Retourner les résultats en réponse JSON
+        return response()->json([
+            'sales' => $salesArray,
+        ]);
     }
+    
+
+    
+    
+    
+    
+
 
     private function getDayName($dayNumber)
     {
@@ -216,48 +263,58 @@ class SaleController extends Controller
     }
 
     public function salesForOneYear()
-    {
-        // Get the start and end dates of the current year
-        $startDate = Carbon::now()->startOfYear();
-        $endDate = Carbon::now()->endOfYear();
+{
+    // Définir les dates de début et de fin de l'année en cours
+    $startDate = Carbon::now()->startOfYear();
+    $endDate = Carbon::now()->endOfYear();
 
-        // Retrieve sales data for one year
-        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('MONTH(created_at) as month, SUM(saleAmout) as ca')
-            ->groupBy('month')
-            ->get();
+    // Récupérer les données de vente pour l'année en cours
+    $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
+        ->selectRaw('MONTH(created_at) as month, SUM(saleAmout) as ca')
+        ->groupBy('month')
+        ->get();
 
-        // Create an associative array to store the results
-        $salesArray = [
-            Carbon::create()->month(1)->formatLocalized('%b') => 0, // Jan
-            Carbon::create()->month(2)->formatLocalized('%b') => 0, // Fév
-            Carbon::create()->month(3)->formatLocalized('%b') => 0, // Mar
-            Carbon::create()->month(4)->formatLocalized('%b') => 0, // Avr
-            Carbon::create()->month(5)->formatLocalized('%b') => 0, // Mai
-            Carbon::create()->month(6)->formatLocalized('%b') => 0, // Juin
-            Carbon::create()->month(7)->formatLocalized('%b') => 0, // Juil
-            Carbon::create()->month(8)->formatLocalized('%b') => 0, // Aoû
-            Carbon::create()->month(9)->formatLocalized('%b') => 0, // Sep
-            Carbon::create()->month(10)->formatLocalized('%b') => 0, // Oct
-            Carbon::create()->month(11)->formatLocalized('%b') => 0, // Nov
-            Carbon::create()->month(12)->formatLocalized('%b') => 0, // Déc
-        ];
-        // Initialize a variable to store the maximum result
-        $maxResult = 0;
+    // Initialiser le tableau des ventes mensuelles avec des valeurs par défaut à 0
+    $salesArray = [
+        Carbon::create()->month(1)->formatLocalized('%b') => 0, // Jan
+        Carbon::create()->month(2)->formatLocalized('%b') => 0, // Fév
+        Carbon::create()->month(3)->formatLocalized('%b') => 0, // Mar
+        Carbon::create()->month(4)->formatLocalized('%b') => 0, // Avr
+        Carbon::create()->month(5)->formatLocalized('%b') => 0, // Mai
+        Carbon::create()->month(6)->formatLocalized('%b') => 0, // Juin
+        Carbon::create()->month(7)->formatLocalized('%b') => 0, // Juil
+        Carbon::create()->month(8)->formatLocalized('%b') => 0, // Aoû
+        Carbon::create()->month(9)->formatLocalized('%b') => 0, // Sep
+        Carbon::create()->month(10)->formatLocalized('%b') => 0, // Oct
+        Carbon::create()->month(11)->formatLocalized('%b') => 0, // Nov
+        Carbon::create()->month(12)->formatLocalized('%b') => 0, // Déc
+    ];
 
-        // Iterate through the sales data and put the results in the array
-        foreach ($sales as $key =>  $sale) {
-            $monthName = Carbon::create()->month($sale->month)->formatLocalized('%b');
-            $salesArray[$monthName] = $sale->ca;
-            // Update the maximum result if the current CA is greater
-            if ($sale->ca > $maxResult) {
-                $maxResult = $sale->ca;
-            }
+    // Variables pour stocker le maximum et le total des ventes
+    $maxResult = 0;
+    $totalSales = 0;
+
+    // Remplir les ventes mensuelles et calculer le total
+    foreach ($sales as $sale) {
+        $monthName = Carbon::create()->month($sale->month)->formatLocalized('%b');
+        $salesArray[$monthName] = $sale->ca;
+        $totalSales += $sale->ca;  // Ajouter chaque vente au total
+        if ($sale->ca > $maxResult) {
+            $maxResult = $sale->ca;
         }
-
-        // Return the sales data as a JSON response
-        return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
     }
+
+    // Retourner les données sous forme de réponse JSON, y compris le total et le maximum réels des ventes
+    return response()->json([
+        'sales' => $salesArray,
+        'maxResult' => $maxResult,
+        'totalSales' => $totalSales
+    ]);
+}
+
+
+
+
 
     public function index(Request $request): JsonResponse
     {
@@ -493,6 +550,11 @@ class SaleController extends Controller
         return response()->json($totalSalesAmount);
     }
 
+
+
+
+
+
     private function updateProductQuantities(array $data, Product $product): void
     {
         // Mise à jour des quantités disponibles
@@ -644,7 +706,6 @@ class SaleController extends Controller
         return response()->json(['allSales' => $allSales]);
     }
     
-
      
     // Méthode pour calculer le montant d'un produit
     private function calculateProductAmount($product, $sale)

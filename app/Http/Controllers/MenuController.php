@@ -20,7 +20,6 @@ class MenuController extends Controller
             })
                 ->with('subMenu')->get();
         }
-
         return response()->json($menus);
     }
 }

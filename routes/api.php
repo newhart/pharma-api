@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\SupplyController;
 
+
+Route::get('/current-date', [SettingController::class, 'currentDate']);
+
+
 // auth user
 Route::post('login', [\App\Http\Controllers\LoginUserController::class, 'login']);
 // logout  user
@@ -107,3 +111,5 @@ Route::get('/menus', [MenuController::class, 'index'])->middleware('auth:sanctum
 // roles ressource
 Route::get('/roles', [RoleController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/roles', [RoleController::class, 'store'])->middleware('auth:sanctum');
+
+Route::delete('/roles/{id}', [RoleController::class, 'destroy'])->middleware('auth:sanctum');

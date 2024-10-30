@@ -35,4 +35,15 @@ class RoleController extends Controller
         $role->menus()->attach($menu_ids);
         return response()->json(['success' => true]);
     }
+
+    public function destroy($id): JsonResponse
+    {
+        $role = Role::findOrFail($id);
+
+        $role->menus()->detach();
+        $role->delete();
+
+        return response()->json(['success' => true, 'message' => 'Role deleted successfully']);
+    }
+
 }

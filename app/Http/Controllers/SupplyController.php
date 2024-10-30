@@ -11,60 +11,6 @@ use Illuminate\Http\JsonResponse;
 
 class SupplyController extends Controller
 {
-    // public function addSupply(Request $request, $id, $differenceInYears = 1): JsonResponse
-    // {
-    //     $request->validate([
-    //         'quantity' => 'required|integer|min:1',
-    //         'datePeremption' => 'nullable|date',
-    //     ]);
-    //     try {
-    //         $product = Product::findOrFail($id);
-    
-    //         $product->quantityBoite += $request->quantity;
-    
-    //         $warningMessage = null;
-    
-    //         if ($request->has('datePeremption')) {
-    //             $product->datePeremption = $request->datePeremption;
-    
-    //             $expirationDate = Carbon::parse($product->datePeremption);
-    //             $currentDate = Carbon::now();
-    //             $diffInYears = $currentDate->diffInYears($expirationDate);
-    
-    //             if ($diffInYears <= $differenceInYears) {
-    //                 $warningMessage = "Veuillez mettre directement l'article sur votre étagère car sa date de péremption est proche";
-    //             }
-    //         }
-    
-    //         $product->save();
-    
-    //         $enter = Enter::create([
-    //             'dateEntrer' => now(),
-    //             'user_id' => auth()->id()
-    //         ]);
-    
-    //         $enter->products()->attach($product->id, [
-    //             'quantityEnter' => $request->quantity,
-    //             'created_at' => now(),
-    //             'updated_at' => now(),
-    //         ]);
-    
-    //         $response = [
-    //             'data' => true,
-    //             'message' => 'Approvisionnement ajouté avec succès',
-    //         ];
-    
-    //         if ($warningMessage) {
-    //             $response['warning'] = $warningMessage;
-    //         }
-    
-    //         return response()->json($response);
-    
-    //     } catch (\Throwable $th) {
-    //         return response()->json(['error' => $th->getMessage()], 500);
-    //     }
-    // }
-
     public function addSupply(Request $request, $id): JsonResponse
     {
         $request->validate([
@@ -211,7 +157,6 @@ class SupplyController extends Controller
             if (!auth()->check()) {
                 return response()->json(['error' => 'Utilisateur non authentifié'], 401);
             }
-    
             $enter = Enter::findOrFail($id);
     
             $enter->products()->detach();
@@ -223,6 +168,4 @@ class SupplyController extends Controller
             return response()->json(['error' => $th->getMessage()], 500);
         }
     }
-      
-
 }

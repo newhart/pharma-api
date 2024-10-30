@@ -47,17 +47,21 @@ class UserController extends Controller
         return response()->json(['error' => true]);
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function update(Request $request, $id)
     {
-        if ($request->user()->can('update', $user)) {
-            $user->update([
-                'name' => $request->name,
-                'role' => $request->role['type'],
-                'role_id' => $request->role['id']
-            ]);
-            return response()->json(['success' => true]);
+        $user = User::find($id);
+        
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
         }
-        return response()->json(['success' => true]);
+        
+        $data = $request->all();
+    
+        if (isset($data['name'])) {
+            $user->name = $data['name'];
+        }
+        $user->save();
+        return response()->json(['message' => 'User updated successfully'], 200);
     }
 
     public function item()
