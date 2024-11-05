@@ -49,6 +49,7 @@ Route::get('/users/item', [UserController::class, 'item'])->middleware('auth:san
 Route::post('/users', [UserController::class, 'store'])->middleware('auth:sanctum');
 Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('auth:sanctum');
 Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('auth:sanctum');
+
 Route::post('/add-to-cart', [CartController::class, 'addToCart'])->middleware('auth:sanctum');
 // create sale api ressource
 Route::post('/sale', [SaleController::class, 'store'])->middleware('auth:sanctum');
@@ -56,7 +57,18 @@ Route::post('/sales/checked-validation', [SaleController::class, 'checkValidatio
 Route::post('/sales/payment-mode', [SaleController::class, 'addPaymentMode']);
 
 Route::get('/sales', [SaleController::class, 'index'])->middleware('auth:sanctum')->middleware('auth:sanctum');
+
+//dashboard
 Route::get('/sales/last-week-sales', [SaleController::class, 'lastWeekSales'])->middleware('auth:sanctum');
+Route::get('/sales/week-sales', [SaleController::class, 'thisWeekSales'])->middleware('auth:sanctum');
+Route::get('/sales/day-sales', [SaleController::class, 'todaySales'])->middleware('auth:sanctum');
+Route::get('/sales/vente-en-cours', [SaleController::class, 'salesInProgressOrExpired'])->middleware('auth:sanctum');
+Route::get('/sales/vente-pourcentage', [SaleController::class, 'getSaleStatistics'])->middleware('auth:sanctum');
+
+Route::get('/sales/monthly/{year}', [SaleController::class, 'getMonthlySalesForYear'])->middleware('auth:sanctum');
+Route::get('/sales/annual-total', [SaleController::class, 'getAnnualSalesTotal'])->middleware('auth:sanctum');
+
+
 Route::get('/sales/for-one-year', [SaleController::class, 'salesForOneYear'])->middleware('auth:sanctum');
 Route::get('/sales/ca-for-now', [SaleController::class, 'getCaNow'])->middleware('auth:sanctum');
 Route::get('/sales/last-mounth-sale', [SaleController::class, 'salesForLastMonth'])->middleware('auth:sanctum');
@@ -64,7 +76,7 @@ Route::get('/sales/invalid', [SaleController::class, 'getCountInvalidSale'])->mi
 Route::get('/sales/count-in-progress', [SaleController::class, 'countSalesInProgress'])->middleware('auth:sanctum');
 Route::get('/sales/in-progress', [SaleController::class, 'listInProgress'])->middleware('auth:sanctum');
 Route::get('/sales/ids-in-progress', [SaleController::class, 'getSalesIdsInProgress']);
-Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails']);
+Route::put('/sales/update-details', [SaleController::class, 'updateSaleDetails'])->middleware(('auth:sanctum'));
 Route::get('/sales/pending', [SaleController::class, 'getAllSales']);
 Route::put('/sales/update-payment', [SaleController::class, 'updatePayment']);
 Route::get('/pending-sales/pdf', [SaleController::class, 'downloadPendingSalesPdf']);

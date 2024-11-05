@@ -152,93 +152,216 @@ class SaleController extends Controller
         return array_map($transformFunction, $data);
     }
 
-    // public function lastWeekSales()
-    // {
-    //     // Définir la locale de Carbon en français
-    //     Carbon::setLocale('fr');
-    //     // Get the start and end dates of the current week
-    //     $startDate = Carbon::now()->subWeek()->startOfWeek();
-    //     $endDate = Carbon::now()->subWeek()->endOfWeek();
 
-    //     // Retrieve sales data for this week
-
-    //     // Retrieve sales data for one year and update the values for each day
-    //     $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
-    //         ->selectRaw('DAYOFWEEK(created_at) as day, SUM(saleAmout) as ca')
-    //         ->groupBy('day')
-    //         ->get();
-
-    //     // Create an associative array to store the results with initial values set to zero
-    //     $salesArray = [
-    //         'Lun' => 0, // Monday
-    //         'Mar' => 0, // Tuesday
-    //         'Mer' => 0, // Wednesday
-    //         'Jeu' => 0, // Thursday
-    //         'Ven' => 0, // Friday
-    //         'Sam' => 0, // Saturday
-    //         'Dim' => 0, // Sunday
-    //     ];
-
-    //     // Initialize a variable to store the maximum result
-    //     $maxResult = 0;
-
-    //     // Iterate through the sales data and put the results in the array
-    //     foreach ($sales as $key =>  $sale) {
-    //         $dayNumber = intval($sale->day);
-    //         if ($dayNumber >= 1 && $dayNumber <= 7) {
-    //             $dayName = $this->getDayName($dayNumber);
-    //             $salesArray[$dayName] = $sale->ca;
-
-    //             // Update the maximum result if the current CA is greater
-    //             if ($sale->ca > $maxResult) {
-    //                 $maxResult = $sale->ca;
-    //             }
-    //         }
-    //     }
-
-    //     // Return the sales data as a JSON response
-    //     return response()->json(['sales' => $this->convertToPercentage($salesArray, $maxResult), 'maxResult' => 150]);
-    // }
-    public function lastWeekSales()
+    // total de vente la semaine derniere
+    public function lastWeekSales() 
     {
-        // Définir la locale de Carbon en français
         Carbon::setLocale('fr');
     
-        // Déterminer la date de début et de fin pour la semaine dernière
-        $startDate = Carbon::now()->startOfWeek()->subWeek(); // Début de la semaine dernière
-        $endDate = Carbon::now()->endOfWeek()->subWeek(); // Fin de la semaine dernière
+        // Définir les dates de début et de fin pour la semaine dernière
+        $startDate = Carbon::now()->startOfWeek()->subWeek();
+        $endDate = Carbon::now()->endOfWeek()->subWeek();
     
-        // Récupération des ventes de la semaine dernière
-        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('DAYOFWEEK(created_at) as day, SUM(saleAmout) as total_sales')
-            ->groupBy('day')
-            ->get();
+        // Récupérer les ventes pour la semaine dernière
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])->get();
     
-        // Initialiser les valeurs des jours de la semaine à 0
-        $salesArray = [
-            'Lun' => 0,
-            'Mar' => 0,
-            'Mer' => 0,
-            'Jeu' => 0,
-            'Ven' => 0,
-            'Sam' => 0,
-            'Dim' => 0,
-        ];
-    
-        // Remplir le tableau avec les résultats des ventes
-        foreach ($sales as $sale) {
-            $dayNumber = intval($sale->day);
-            if ($dayNumber >= 1 && $dayNumber <= 7) {
-                $dayName = $this->getDayName($dayNumber);
-                $salesArray[$dayName] = $sale->total_sales; // Total des ventes pour ce jour
+        // Calculer le total des ventes et le nombre de ventes, en tenant compte des paiements partiels
+        $totalSales = $sales->sum(function ($sale) {
+            // Si la vente est validée, prendre le montant total de saleAmount
+            if ($sale->stateSale === 'Validée') {
+                return $sale->saleAmout;
             }
-        }
+            return $sale->salePayed;
+        });
     
-        // Retourner les résultats en réponse JSON
+        $totalSalesCount = $sales->count();
+    
         return response()->json([
-            'sales' => $salesArray,
+            'total_sales' => $totalSales,
+            'total_sales_count' => $totalSalesCount
         ]);
     }
+    
+
+    // cette semaine
+    public function thisWeekSales() 
+    {
+        Carbon::setLocale('fr');
+    
+        $startDate = Carbon::now()->startOfWeek();
+        $endDate = Carbon::now()->endOfWeek();
+    
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])->get();
+    
+        $totalSalesThisWeek = $sales->sum(function ($sale) {
+            return $sale->stateSale == 'validé' ? $sale->saleAmout : $sale->salePayed;
+        });
+        
+        $totalSalesCountThisWeek = $sales->count();
+    
+        return response()->json([
+            'total_sales_this_week' => $totalSalesThisWeek,
+            'total_sales_count_this_week' => $totalSalesCountThisWeek
+        ]);
+    }
+    
+    // vente aujourd'hui
+    public function todaySales() 
+    {
+        Carbon::setLocale('fr');
+    
+        $startDate = Carbon::now()->startOfDay();
+        $endDate = Carbon::now()->endOfDay();
+    
+        $salesToday = Sale::whereBetween('created_at', [$startDate, $endDate])->get();
+    
+        $totalSalesToday = $salesToday->sum(function ($sale) {
+            if ($sale->stateSale === 'Validée') {
+                return $sale->saleAmout;
+            }
+            return $sale->salePayed;
+        });
+        
+        $totalSalesCountToday = $salesToday->count();
+    
+        return response()->json([
+            'total_sales_today' => $totalSalesToday,
+            'total_sales_count_today' => $totalSalesCountToday
+        ]);
+    }
+    
+    // vente non payer
+    public function salesInProgressOrExpired() {
+        Carbon::setLocale('fr');
+    
+        $sales = Sale::whereIn('stateSale', ['En cours', 'Date dépassée'])
+            ->get();
+    
+        $totalSalesCount = $sales->count();
+    
+        $totalRemainingAmount = $sales->sum(function ($sale) {
+            return $sale->saleAmout - $sale->salePayed;
+        });
+    
+        return response()->json([
+            'total_sales_count' => $totalSalesCount,
+            'total_remaining_amount' => $totalRemainingAmount
+        ]);
+    } 
+
+    //pourcentage
+    public function getSaleStatistics()
+    {
+        // Total des ventes
+        $totalSales = Sale::count();
+    
+        $validatedSales = Sale::where('stateSale', 'Valider')->count();
+    
+        $inProgressQuery = Sale::where('stateSale', 'En cours')
+                                ->where('saleDate', '>', Carbon::now());
+        $inProgressSales = $inProgressQuery->count();
+    
+        $expiredQuery = Sale::where('stateSale', 'Date dépassée')
+                            ->where('saleDate', '<', Carbon::now());
+
+        $expiredSales = $expiredQuery->count();
+    
+        // Calcul des pourcentages
+        $validatedPercentage = $totalSales > 0 ? ($validatedSales / $totalSales) * 100 : 0;
+        $inProgressPercentage = $totalSales > 0 ? ($inProgressSales / $totalSales) * 100 : 0;
+        $expiredPercentage = $totalSales > 0 ? ($expiredSales / $totalSales) * 100 : 0;
+    
+        return response()->json([
+            'totalSales' => $totalSales,
+            'validatedSales' => $validatedSales,
+            'inProgressSales' => $inProgressSales,
+            'expiredSales' => $expiredSales,
+            'validatedPercentage' => round($validatedPercentage, 2),
+            'inProgressPercentage' => round($inProgressPercentage, 2),
+            'expiredPercentage' => round($expiredPercentage, 2),
+        ]);
+    }
+
+    // dans une année
+    public function getMonthlySalesForYear($year)
+    {
+        $monthlySales = [];
+
+        foreach (range(1, 12) as $month) {
+            $sales = Sale::whereYear('saleDate', $year)
+                ->whereMonth('saleDate', $month)
+                ->sum('salePayed');
+
+            $totalPrice = Sale::whereYear('saleDate', $year)
+                ->whereMonth('saleDate', $month)
+                ->with('products')
+                ->get()
+                ->sum(function ($sale) {
+                    return $sale->products->sum(function ($product) {
+                        return $product->pivot->priceSaleBoite * $product->pivot->quantityBoite +
+                               $product->pivot->priceSalePlaquette * $product->pivot->quantityPlaquette +
+                               $product->pivot->priceSaleGellule * $product->pivot->quantityGellule;
+                    });
+                });
+
+            $monthlySales[] = [
+                'month' => Carbon::createFromFormat('m', $month)->format('F'),
+                'totalSales' => $sales,
+                'totalPrice' => $totalPrice,
+            ];
+        }
+
+        $totalSalesForYear = array_sum(array_column($monthlySales, 'totalSales'));
+        $totalPriceForYear = array_sum(array_column($monthlySales, 'totalPrice'));
+
+        return response()->json([
+            'year' => $year,
+            'monthlySales' => $monthlySales,
+            'totalSalesForYear' => $totalSalesForYear,
+            'totalPriceForYear' => $totalPriceForYear,
+        ]);
+    }
+
+    // entre deux date
+    public function getAnnualSalesTotal(Request $request)
+    {
+        // Validation des dates
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+        $years = range($startDate->year, $endDate->year);
+
+        $totalsPerYear = [];
+
+        foreach ($years as $year) {
+            $sales = Sale::whereYear('saleDate', $year)
+                         ->whereBetween('saleDate', [$startDate, $endDate])
+                         ->sum('salePayed');
+
+            $totalsPerYear[$year] = $sales;
+        }
+
+        $totalGlobal = Sale::whereBetween('saleDate', [$startDate, $endDate])
+                           ->sum('salePayed');
+
+        return response()->json([
+            'totals_per_year' => $totalsPerYear,
+            'total_global' => $totalGlobal,
+        ]);
+    }
+
+    
+    
+    
+    
+
+    
+
+    
     
 
     
@@ -263,58 +386,57 @@ class SaleController extends Controller
     }
 
     public function salesForOneYear()
-{
-    // Définir les dates de début et de fin de l'année en cours
-    $startDate = Carbon::now()->startOfYear();
-    $endDate = Carbon::now()->endOfYear();
+    {
+        // Définir les dates de début et de fin de l'année en cours
+        $startDate = Carbon::now()->startOfYear();
+        $endDate = Carbon::now()->endOfYear();
 
-    // Récupérer les données de vente pour l'année en cours
-    $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
-        ->selectRaw('MONTH(created_at) as month, SUM(saleAmout) as ca')
-        ->groupBy('month')
-        ->get();
+        // Récupérer les données de vente pour l'année en cours
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('MONTH(created_at) as month, SUM(saleAmout) as ca')
+            ->groupBy('month')
+            ->get();
 
-    // Initialiser le tableau des ventes mensuelles avec des valeurs par défaut à 0
-    $salesArray = [
-        Carbon::create()->month(1)->formatLocalized('%b') => 0, // Jan
-        Carbon::create()->month(2)->formatLocalized('%b') => 0, // Fév
-        Carbon::create()->month(3)->formatLocalized('%b') => 0, // Mar
-        Carbon::create()->month(4)->formatLocalized('%b') => 0, // Avr
-        Carbon::create()->month(5)->formatLocalized('%b') => 0, // Mai
-        Carbon::create()->month(6)->formatLocalized('%b') => 0, // Juin
-        Carbon::create()->month(7)->formatLocalized('%b') => 0, // Juil
-        Carbon::create()->month(8)->formatLocalized('%b') => 0, // Aoû
-        Carbon::create()->month(9)->formatLocalized('%b') => 0, // Sep
-        Carbon::create()->month(10)->formatLocalized('%b') => 0, // Oct
-        Carbon::create()->month(11)->formatLocalized('%b') => 0, // Nov
-        Carbon::create()->month(12)->formatLocalized('%b') => 0, // Déc
-    ];
+        // Initialiser le tableau des ventes mensuelles avec des valeurs par défaut à 0
+        $salesArray = [
+            Carbon::create()->month(1)->formatLocalized('%b') => 0, // Jan
+            Carbon::create()->month(2)->formatLocalized('%b') => 0, // Fév
+            Carbon::create()->month(3)->formatLocalized('%b') => 0, // Mar
+            Carbon::create()->month(4)->formatLocalized('%b') => 0, // Avr
+            Carbon::create()->month(5)->formatLocalized('%b') => 0, // Mai
+            Carbon::create()->month(6)->formatLocalized('%b') => 0, // Juin
+            Carbon::create()->month(7)->formatLocalized('%b') => 0, // Juil
+            Carbon::create()->month(8)->formatLocalized('%b') => 0, // Aoû
+            Carbon::create()->month(9)->formatLocalized('%b') => 0, // Sep
+            Carbon::create()->month(10)->formatLocalized('%b') => 0, // Oct
+            Carbon::create()->month(11)->formatLocalized('%b') => 0, // Nov
+            Carbon::create()->month(12)->formatLocalized('%b') => 0, // Déc
+        ];
 
-    // Variables pour stocker le maximum et le total des ventes
-    $maxResult = 0;
-    $totalSales = 0;
+        // Variables pour stocker le maximum et le total des ventes
+        $maxResult = 0;
+        $totalSales = 0;
 
-    // Remplir les ventes mensuelles et calculer le total
-    foreach ($sales as $sale) {
-        $monthName = Carbon::create()->month($sale->month)->formatLocalized('%b');
-        $salesArray[$monthName] = $sale->ca;
-        $totalSales += $sale->ca;  // Ajouter chaque vente au total
-        if ($sale->ca > $maxResult) {
-            $maxResult = $sale->ca;
+        // Remplir les ventes mensuelles et calculer le total
+        foreach ($sales as $sale) {
+            $monthName = Carbon::create()->month($sale->month)->formatLocalized('%b');
+            $salesArray[$monthName] = $sale->ca;
+            $totalSales += $sale->ca;  // Ajouter chaque vente au total
+            if ($sale->ca > $maxResult) {
+                $maxResult = $sale->ca;
+            }
         }
+
+        // Retourner les données sous forme de réponse JSON, y compris le total et le maximum réels des ventes
+        return response()->json([
+            'sales' => $salesArray,
+            'maxResult' => $maxResult,
+            'totalSales' => $totalSales
+        ]);
     }
 
-    // Retourner les données sous forme de réponse JSON, y compris le total et le maximum réels des ventes
-    return response()->json([
-        'sales' => $salesArray,
-        'maxResult' => $maxResult,
-        'totalSales' => $totalSales
-    ]);
-}
 
-
-
-
+    
 
     public function index(Request $request): JsonResponse
     {
@@ -426,7 +548,7 @@ class SaleController extends Controller
         // Ajouter cette méthode dans votre contrôleur
     private function imageToBase64($path)
     {
-        $imagePath = storage_path('app/public/' . $path); // Ajustez le chemin selon l'emplacement de stockage de vos images
+        $imagePath = storage_path('app/public/' . $path);
         if (!file_exists($imagePath)) {
             return null;
         }
@@ -549,10 +671,6 @@ class SaleController extends Controller
             ->sum('saleAmout');
         return response()->json($totalSalesAmount);
     }
-
-
-
-
 
 
     private function updateProductQuantities(array $data, Product $product): void
@@ -715,6 +833,55 @@ class SaleController extends Controller
             ($product->pivot->priceSalePlaquette * $product->pivot->quantityPlaquette);
     }
 
+    private function imageToBase($path) {
+        $imagePath = public_path($path);
+        if (!file_exists($imagePath)) {
+            return null;
+        }
+    
+        $imageData = file_get_contents($imagePath);
+        return 'data:image/png;base64,' . base64_encode($imageData);
+    }
+
+    public function generateInvoicePDF($sales, $setting) {
+        $logoBase64 = $this->imageToBase64($setting->logo);
+
+        $formattedSales = $sales->map(function ($sale) {
+            return [
+                'invoice_number' => $sale->invoice_number,
+                'clientName' => $sale->clientName,
+                'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+                'saleAmout' => $sale->saleAmout,
+                'salePayed' => $sale->salePayed,
+                'saleStay' => $sale->saleStay,
+            ];
+        });
+    
+        $pdf = Pdf::loadView('pdf.invoice', [
+        'sales' => $formattedSales,
+        'grandTotal' => $sales->sum('saleAmout'),
+        'logoBase64' => $logoBase64,
+        'nomEntreprise' => $setting->nomEntreprise,
+        'nif' => $setting->nif,
+        'stat' => $setting->stat,
+        'mail' => $setting->mail,
+        'tel' => $setting->tel,
+    ]);
+    
+        
+        $pdfDir = public_path('invoices');
+        if (!file_exists($pdfDir)) {
+            mkdir($pdfDir, 0755, true);
+        }
+    
+        $pdfPath = public_path('invoices/invoice.pdf');
+        $pdf->save($pdfPath);
+    
+        return $pdfPath;
+    }
+    
+    
+
     public function updateSaleDetails(Request $request): JsonResponse
     {
         $request->validate([
@@ -742,17 +909,14 @@ class SaleController extends Controller
 
         try {
             foreach ($sales as $sale) {
-                // Mise à jour des propriétés de la vente
                 $sale->salePayed = $salePayed;
                 $sale->playmentDatePrevueAt = $playmentDatePrevueAt ?? $sale->playmentDatePrevueAt;
                 $sale->clientName = $clientName;
                 $sale->description = $description;
 
-                // Calculer le montant restant
                 $sale->amount_remaining = $sale->saleAmout - $sale->salePayed;
                 
 
-                // Calculer les jours restants
                 if ($sale->playmentDatePrevueAt) {
                     $playmentDatePrevueAt = Carbon::parse($sale->playmentDatePrevueAt);
                     $saleDate = Carbon::parse($sale->saleDate);
@@ -761,7 +925,6 @@ class SaleController extends Controller
                     $sale->saleStay = 0;
                 }
 
-                // Mettre à jour l'état de la vente
                 if ($sale->amount_remaining > 0) {
                     $sale->stateSale = 'En cours';
                 } else {
@@ -769,7 +932,6 @@ class SaleController extends Controller
                 }
                 $sale->save();
 
-                 // Mettre à jour les quantités des produits
                 foreach ($sale->products as $product) {
                 $this->updateProductQuantities([
                     'quantityBoite' => $product->pivot->quantityBoite,
@@ -792,33 +954,47 @@ class SaleController extends Controller
 
             
 
-            return response()->json([
-                'success' => true,
-                'sales' => $sales->map(function ($sale) {
-                    return [
-                        'id' => $sale->id,
-                        'saleDate' => $sale->saleDate,
-                        'saleAmout' => $sale->saleAmout,
-                        'salePayed' => $sale->salePayed,
-                        'saleStay' => $sale->saleStay,
-                        'estACredit' => $sale->estACredit,
-                        'playmentMode' => $sale->playmentMode,
-                        'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
-                        'clientName' => $sale->clientName,
-                        'description' => $sale->description,
-                        'stateSale' => $sale->stateSale,
-                        'remise' => $sale->remise,
-                        'created_at' => $sale->created_at,
-                        'updated_at' => $sale->updated_at,
-                        'user_id' => $sale->user_id,
-                        'invoice_number' => $sale->invoice_number,
-                        'amount_remaining' => $sale->saleAmout - $sale->salePayed
-                    ];
-                }),
-                'allSaleIds' => $idsInProgress, // Afficher tous les IDs des ventes en cours
-                'grandTotal' => $grandTotal,
-                'amount_remaining' => $amountRemaining,
-            ]);
+            // return response()->json([
+            //     'success' => true,
+            //     'sales' => $sales->map(function ($sale) {
+            //         return [
+            //             'id' => $sale->id,
+            //             'saleDate' => $sale->saleDate,
+            //             'saleAmout' => $sale->saleAmout,
+            //             'salePayed' => $sale->salePayed,
+            //             'saleStay' => $sale->saleStay,
+            //             'estACredit' => $sale->estACredit,
+            //             'playmentMode' => $sale->playmentMode,
+            //             'playmentDatePrevueAt' => $sale->playmentDatePrevueAt,
+            //             'clientName' => $sale->clientName,
+            //             'description' => $sale->description,
+            //             'stateSale' => $sale->stateSale,
+            //             'remise' => $sale->remise,
+            //             'created_at' => $sale->created_at,
+            //             'updated_at' => $sale->updated_at,
+            //             'user_id' => $sale->user_id,
+            //             'invoice_number' => $sale->invoice_number,
+            //             'amount_remaining' => $sale->saleAmout - $sale->salePayed
+            //         ];
+            //     }),
+            //     'allSaleIds' => $idsInProgress, // Afficher tous les IDs des ventes en cours
+            //     'grandTotal' => $grandTotal,
+            //     'amount_remaining' => $amountRemaining,
+            // ]);
+        
+              // Récupérer l'objet Setting
+        $setting = Setting::first();
+
+          // Générer le PDF après mise à jour
+          $this->generateInvoicePDF($sales, $setting);
+
+        // Retourner une réponse JSON avec l'URL du PDF
+        return response()->json([
+            'success' => true,
+            'message' => 'Détails de la vente mis à jour avec succès.',
+            'pdf_url' => url('invoices/invoice.pdf')
+        ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Une erreur est survenue lors de la mise à jour des détails des ventes.',

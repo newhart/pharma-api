@@ -16,6 +16,7 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Product::query();
+        
         if ($request->get('search')) {
             $query = $query->where('name', 'LIKE', "%{$request->get('search')}%");
         }

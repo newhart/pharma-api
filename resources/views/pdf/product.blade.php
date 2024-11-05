@@ -6,7 +6,7 @@
     <title>Liste produit</title>
     <style>
       body {
-        font-faamily: sans-serif;
+        font-family: sans-serif;
         margin: 0;
         padding: 0;
         position: relative;
@@ -30,7 +30,7 @@
       }
 
       .logo-section {
-        position: absolute; /* Permet au logo de rester en haut à gauche */
+        position: absolute;
         top: 0px;
         left: 10px;
         max-width: 150px;
@@ -40,18 +40,18 @@
       .logo-section img {
         max-width: 100px;
         height: auto;
-        display: block; /* Assure que l'image est traitée comme un bloc pour centrer */
+        display: block; 
         margin: 0 auto;
       }
 
       .logo-section .company-info {
-        font-size: 10px; /* Taille de police plus petite */
+        font-size: 10px;
       }
 
       .logo-section .company-info p {
         margin: 0;
-        padding: 2px 0;
-        white-space: nowrap; /* Évite les retours à la ligne dans les paragraphes */
+        padding: 3px 0;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
@@ -92,7 +92,7 @@
       }
 
       th {
-        background-color: #3699ff;
+        background-color: #2BBBB4;
         color: #fff;
         font-weight: bold;
         font-size: 12px;
@@ -143,14 +143,14 @@
                     <h3>Pharacie</h3>
                 @endif
                 <div class="company-info">
-                    <p>{{ $nomEntreprise }}</p>
-                    <p>{{ $nif }}</p>
-                    <p>{{ $stat }}</p>
-                    <p>{{ $mail }}</p>
-                    <p>{{ $tel }}</p>
+                    <p>Pharmacie : {{ $nomEntreprise }}</p>
+                    <p>Nif : {{ $nif }}</p>
+                    <p>Stat :{{ $stat }}</p>
+                    <p>E-mail : {{ $mail }}</p>
+                    <p>Telephone : {{ $tel }}</p>
                 </div>
             </div>
-            <h3>Etat en stock</h3>
+            <h3>Etat de stock</h3>
             <p class="date">{{ $now->format('d/m/Y H:i') }}</p>
       </div>
       <div class="content">
